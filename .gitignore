@@ -23,4 +23,5 @@ Thumbs.db
 # Claude Code local settings
 .claude/
 
-# Documentation is checked in for GitHub
+# Local documentation (not pushed to GitHub)
+docs/
