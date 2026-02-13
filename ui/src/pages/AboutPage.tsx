@@ -33,7 +33,7 @@ export function AboutPage({ version }: { version: string }) {
           <div className="border-t border-border/50 w-full my-1" />
 
           <div>
-            <p className="text-xs font-semibold font-heading">Built by Brad Anderson Jr.</p>
+            <p className="text-xs font-semibold font-heading">Built by <button onClick={() => openUrl("https://bradandersonjr.com")} className="text-primary hover:underline bg-none border-none p-0 cursor-pointer">brad anderson jr.</button></p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Luthier, engineer, and open-source enthusiast.
             </p>
