@@ -14,7 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import type { PageId } from "@/types"
-import { SlidersHorizontal, FileBarChart, Scroll, HelpCircle, Users, Heart, Info, LayoutTemplate, Bug, ExternalLink } from "lucide-react"
+import { SlidersHorizontal, FileBarChart, Scroll, HelpCircle, Users, Heart, Info, LayoutTemplate, Bug, ExternalLink, Circle } from "lucide-react"
 import { openUrl } from "@/lib/fusion-bridge"
 import IconSvg from "@/assets/icon.svg"
 
@@ -91,12 +91,12 @@ export function AppSidebar({
 
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem className="flex justify-center group-data-[collapsible=icon]:justify-center">
+          <SidebarMenuItem>
             <SidebarMenuButton
               tooltip={connected ? "Connected" : "Connecting..."}
               className="pointer-events-none"
             >
-              <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${connected ? "bg-green-500" : "bg-red-500"}`} />
+              <Circle className={`w-2 h-2 shrink-0 ${connected ? "fill-green-500 text-green-500" : "fill-red-500 text-red-500"}`} />
               <span className="text-xs text-muted-foreground">
                 {connected ? "Connected" : "Connecting..."}
               </span>

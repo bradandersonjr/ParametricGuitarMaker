@@ -3,8 +3,9 @@
 
 import os
 
-# Debug mode: set True during development, False for distribution.
-DEBUG = False
+# Debug mode: check environment variable, default to False for distribution.
+# To enable locally: set DEBUG_MODE=true in your shell or .env
+DEBUG = os.getenv('DEBUG_MODE', 'false').lower() == 'true'
 
 # Add-in identity — derived from the folder name automatically.
 ADDIN_NAME = os.path.basename(os.path.dirname(__file__))

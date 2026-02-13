@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Parametric Guitar: Fretboard Maker — Parameter Schema",
     "description": "Defines all user-facing parameters, their types, constraints, grouping, and defaults. This schema drives both the UI and the parameter bridge.",
-    "schemaVersion": "0.3.0",
+    "schemaVersion": "0.1.0",
     "templateVersion": "1.0.0",
     "parameterMetadataFields": {
         "tooltip": "string — helpful hint text shown on hover",

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { sendToPython, addMessageHandler } from "@/lib/fusion-bridge"
 import type { TimelineItem, TimelineSummary } from "@/types"
 import { ChevronDown, ChevronRight, Eye, EyeOff, RefreshCw, AlertCircle, Layers } from "lucide-react"
@@ -198,7 +198,7 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
               No timeline items found
             </p>
           ) : (
-            items.map((item, idx) => {
+            items.map((item) => {
               const isGroup = item.type === "Group"
               const hasChildren = isGroup && (groupedItems[item.name]?.length ?? 0) > 0
               const isExpanded = expandedGroups.has(item.name)
