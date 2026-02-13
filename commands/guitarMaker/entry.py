@@ -134,28 +134,32 @@ def command_execute(args: adsk.core.CommandEventArgs):
     futil.log(f'{CMD_NAME}: Command Execute')
     global _owner_document
 
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        ui.messageBox('A Fusion Design must be active to use Parametric Guitar: Fretboard Maker.')
-        return
+    try:
+        design = adsk.fusion.Design.cast(app.activeProduct)
+        if not design:
+            ui.messageBox('A Fusion Design must be active to use Parametric Guitar: Fretboard Maker.')
+            return
 
-    # ── Build payload ────────────────────────────────────────────────
-    # If the fingerprint parameter exists, this design was created with the app
-    # — go straight to live mode. Otherwise show schema defaults for first-time import.
-    fingerprint = parameter_bridge.get_fingerprint(design)
-    if fingerprint is not None:
-        futil.log(f'{CMD_NAME}: Design fingerprint detected — loading live parameters')
-        payload = parameter_bridge.build_ui_payload(design)
-    else:
-        futil.log(f'{CMD_NAME}: No fingerprint found — this is a new design')
-        payload = parameter_bridge.build_schema_payload(design)
+        # ── Build payload ────────────────────────────────────────────────
+        # If the fingerprint parameter exists, this design was created with the app
+        # — go straight to live mode. Otherwise show schema defaults for first-time import.
+        fingerprint = parameter_bridge.get_fingerprint(design)
+        if fingerprint is not None:
+            futil.log(f'{CMD_NAME}: Design fingerprint detected — loading live parameters')
+            payload = parameter_bridge.build_ui_payload(design)
+        else:
+            futil.log(f'{CMD_NAME}: No fingerprint found — this is a new design')
+            payload = parameter_bridge.build_schema_payload(design)
 
-    if payload is None:
-        ui.messageBox('Failed to build parameter payload. Check the schema file.')
-        return
+        if payload is None:
+            ui.messageBox('Failed to build parameter payload. Check the schema file.')
+            return
 
-    # ── Show the palette ────────────────────────────────────────────
-    _show_palette(payload)
+        # ── Show the palette ────────────────────────────────────────────
+        _show_palette(payload)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: command_execute error: {e}', adsk.core.LogLevels.ErrorLogLevel)
+        ui.messageBox(f'Error opening palette: {str(e)}', CMD_NAME)
 
 
 def _show_palette(payload):
