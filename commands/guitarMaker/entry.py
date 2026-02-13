@@ -54,7 +54,7 @@ USER_TEMPLATES_DIR = os.path.join(
 # ── Palette config ──────────────────────────────────────────────────
 PALETTE_ID = config.PALETTE_ID
 PALETTE_NAME = config.PALETTE_NAME
-PALETTE_LOCAL_URL = os.path.join(
+PALETTE_LOCAL_URL = 'file:///' + os.path.join(
     config.ADDIN_ROOT, 'ui_dist', 'index.html'
 ).replace('\\', '/')
 PALETTE_URL = config.PALETTE_DEV_URL or PALETTE_LOCAL_URL
