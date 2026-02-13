@@ -1,0 +1,22 @@
+{
+  "name": "Standard 4-String Bass",
+  "description": "34\" long-scale 4-string bass guitar, 21 frets",
+  "createdAt": "2026-02-12",
+  "schemaVersion": "0.3.0",
+  "parameters": {
+    "FretCount": "21",
+    "StringCount": "4",
+    "NeutralFret": "9",
+    "ScaleLengthBass": "34.00",
+    "ScaleLengthTreb": "34.00",
+    "NutSlotSpacing": "0.375",
+    "SaddleSpacing": "0.75",
+    "NutRadius": "12.00",
+    "StringGauge1": "0.045",
+    "StringGauge2": "0.065",
+    "StringGauge3": "0.085",
+    "StringGauge4": "0.105",
+    "StringGauge5": "0.00",
+    "StringGauge6": "0.00"
+  }
+}

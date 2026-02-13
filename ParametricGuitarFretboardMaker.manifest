@@ -1,0 +1,13 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"addin",
+	"id":	"7b9d6232-e666-4299-8130-104975d04523",
+	"author":	"brad anderson jr",
+	"description":	{
+		"":	"Parametric Guitar: Fretboard Maker — Design custom guitar fretboards with precise parameter control."
+	},
+	"version":	"0.5.0",
+	"runOnStartup":	false,
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}

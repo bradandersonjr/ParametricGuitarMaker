@@ -1,0 +1,22 @@
+{
+  "name": "Standard 6-String Guitar",
+  "description": "Classic 25.5\" single-scale, 22-fret electric guitar",
+  "createdAt": "2026-02-12",
+  "schemaVersion": "0.3.0",
+  "parameters": {
+    "FretCount": "22",
+    "StringCount": "6",
+    "NeutralFret": "9",
+    "ScaleLengthBass": "25.50",
+    "ScaleLengthTreb": "25.50",
+    "NutSlotSpacing": "0.2776",
+    "SaddleSpacing": "0.416",
+    "NutRadius": "10.00",
+    "StringGauge1": "0.009",
+    "StringGauge2": "0.011",
+    "StringGauge3": "0.016",
+    "StringGauge4": "0.024",
+    "StringGauge5": "0.032",
+    "StringGauge6": "0.042"
+  }
+}

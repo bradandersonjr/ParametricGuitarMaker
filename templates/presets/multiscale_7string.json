@@ -1,0 +1,23 @@
+{
+  "name": "Multiscale 7-String",
+  "description": "Fan-fret 7-string: 27\" bass / 25.5\" treble, 24 frets, neutral fret 7",
+  "createdAt": "2026-02-12",
+  "schemaVersion": "0.3.0",
+  "parameters": {
+    "FretCount": "24",
+    "StringCount": "7",
+    "NeutralFret": "7",
+    "ScaleLengthBass": "27.00",
+    "ScaleLengthTreb": "25.50",
+    "NutSlotSpacing": "0.250",
+    "SaddleSpacing": "0.375",
+    "NutRadius": "16.00",
+    "StringGauge1": "0.009",
+    "StringGauge2": "0.011",
+    "StringGauge3": "0.016",
+    "StringGauge4": "0.024",
+    "StringGauge5": "0.032",
+    "StringGauge6": "0.042",
+    "StringGauge7": "0.056"
+  }
+}

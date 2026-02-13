@@ -1,0 +1,1279 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Parametric Guitar: Fretboard Maker — Parameter Schema",
+    "description": "Defines all user-facing parameters, their types, constraints, grouping, and defaults. This schema drives both the UI and the parameter bridge.",
+    "schemaVersion": "0.3.0",
+    "templateVersion": "1.0.0",
+    "parameterMetadataFields": {
+        "tooltip": "string — helpful hint text shown on hover",
+        "category": "string — custom categorization (count, dimension, angle, depth, spacing, etc.)",
+        "expert": "boolean — if true, show in 'Advanced' section (default false)",
+        "dependsOn": "array[string] — parameter names that should be set before this one",
+        "relatedParams": "array[string] — logically related parameter names",
+        "notes": "string — internal development/design notes",
+        "precision": "number — decimal places to display in UI (0 = integer)",
+        "deprecated": "boolean — mark as obsolete (default false)"
+    },
+    "groups": [
+        {
+            "id": "general",
+            "label": "General",
+            "order": 1,
+            "parameters": [
+                {
+                    "name": "FretCount",
+                    "label": "Fret Count",
+                    "unitKind": "unitless",
+                    "controlType": "number",
+                    "default": "24",
+                    "min": 12,
+                    "max": 36,
+                    "step": 1,
+                    "description": "The total number of frets",
+                    "tooltip": "Standard guitars typically have 20–24 frets; extended-range instruments up to 36.",
+                    "category": "count",
+                    "precision": 0,
+                    "relatedParams": [
+                        "NeutralFret",
+                        "HeelTransitionFret",
+                        "FallAwayFret"
+                    ],
+                    "notes": "Affects fretboard length, heel transition, and fall-away configuration. | Expression: 24",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringCount",
+                    "label": "String Count",
+                    "unitKind": "unitless",
+                    "controlType": "number",
+                    "default": "6",
+                    "min": 4,
+                    "max": 8,
+                    "step": 1,
+                    "description": "The total number of strings",
+                    "tooltip": "6-string guitars are standard; 7–8 strings extend the lower range.",
+                    "category": "count",
+                    "precision": 0,
+                    "relatedParams": [
+                        "StringGauge1",
+                        "StringGauge2",
+                        "StringGauge3",
+                        "StringGauge4",
+                        "StringGauge5",
+                        "StringGauge6",
+                        "StringGauge7",
+                        "StringGauge8"
+                    ],
+                    "notes": "Affects headstock tuning machine layout and bridge pin spacing. | Expression: 6",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "NeutralFret",
+                    "label": "Neutral Fret",
+                    "unitKind": "unitless",
+                    "controlType": "number",
+                    "default": "9",
+                    "min": 0,
+                    "max": 36,
+                    "step": 1,
+                    "description": "The fret which is perpendicular to the fretboard's centerline when scale lengths aren't equal",
+                    "tooltip": "Only applies to multi-scale guitars. Set to 0 for single-scale designs.",
+                    "category": "count",
+                    "precision": 0,
+                    "expert": true,
+                    "dependsOn": [
+                        "ScaleLengthBass",
+                        "ScaleLengthTreb"
+                    ],
+                    "relatedParams": [
+                        "ScaleLengthBass",
+                        "ScaleLengthTreb",
+                        "NeutralFretOffset"
+                    ],
+                    "notes": "Typically 7–9 frets for most multi-scale designs. Affects fret spacing calculation. | Expression: 9",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "ScaleLengthBass",
+                    "label": "Scale Length Bass",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "25.50",
+                    "min": 20,
+                    "max": 36,
+                    "step": 0.05,
+                    "description": "Scale length for the top-most string of a multiscale guitar",
+                    "tooltip": "Low E string reference length. Standard is 25.5 in; 24.75 in is common for shorter scales.",
+                    "category": "dimension",
+                    "precision": 2,
+                    "dependsOn": [],
+                    "relatedParams": [
+                        "ScaleLengthTreb",
+                        "NeutralFret",
+                        "FretCount"
+                    ],
+                    "notes": "Determines fret spacing on bass side; critical for intonation. | Expression: 25.5 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "ScaleLengthTreb",
+                    "label": "Scale Length Treb",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "24.25",
+                    "min": 20,
+                    "max": 36,
+                    "step": 0.05,
+                    "description": "Scale length for the bottom-most string of a multiscale guitar",
+                    "tooltip": "High E string reference length. Set equal to Bass for single-scale; different for multi-scale.",
+                    "category": "dimension",
+                    "precision": 2,
+                    "expert": true,
+                    "relatedParams": [
+                        "ScaleLengthBass",
+                        "NeutralFret",
+                        "FretCount"
+                    ],
+                    "notes": "Only differs from Bass on multi-scale guitars. Affects treble-side fret spacing. | Expression: 24.25 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "GuitarLength",
+                    "label": "Guitar Length",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "38.25",
+                    "min": 20,
+                    "max": 50,
+                    "step": 0.1,
+                    "description": "Overall length of the guitar-- along the X-xis",
+                    "tooltip": "Total length from headstock tip to body bottom. Affects playability and neck comfort.",
+                    "category": "dimension",
+                    "precision": 1,
+                    "relatedParams": [
+                        "GuitarWidth",
+                        "GuitarThickness",
+                        "BodyLength",
+                        "HeadstockLength"
+                    ],
+                    "notes": "Most acoustic guitars are 37–39 in; classical guitars 39–40 in. | Expression: 38.25 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "GuitarWidth",
+                    "label": "Guitar Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "12.75",
+                    "min": 8,
+                    "max": 24,
+                    "step": 0.1,
+                    "description": "Overall width of the guitar-- along the Y-axis",
+                    "tooltip": "Body width at the widest point. Affects comfortability and ergonomics.",
+                    "category": "dimension",
+                    "precision": 1,
+                    "relatedParams": [
+                        "GuitarLength",
+                        "GuitarThickness",
+                        "BodyWidth"
+                    ],
+                    "notes": "Standard dreadnought: 14.875 in; classical: 13–15 in. | Expression: 12.75 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "GuitarThickness",
+                    "label": "Guitar Thickness",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "3 in",
+                    "min": 1,
+                    "max": 6,
+                    "step": 0.05,
+                    "description": "Overall guitar thickness.",
+                    "tooltip": "Body depth from top to back plate. Influences tone and volume.",
+                    "category": "dimension",
+                    "precision": 2,
+                    "relatedParams": [
+                        "GuitarLength",
+                        "GuitarWidth",
+                        "BodyThickness"
+                    ],
+                    "notes": "Most acoustics: 2.75–3.5 in. Thicker = warmer tone, louder; thinner = brighter."
+                }
+            ]
+        },
+        {
+            "id": "neck",
+            "label": "Neck",
+            "order": 2,
+            "parameters": [
+                {
+                    "name": "NeckThickness1st",
+                    "label": "Neck Thickness 1st",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.82 in",
+                    "min": 0.5,
+                    "max": 1.5,
+                    "step": 0.01,
+                    "description": "Neck thickness at the 1st fret."
+                },
+                {
+                    "name": "NeckThickness12th",
+                    "label": "Neck Thickness 12th",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.94 in",
+                    "min": 0.5,
+                    "max": 1.5,
+                    "step": 0.01,
+                    "description": "Neck thickness at the 12th fret."
+                },
+                {
+                    "name": "NeckLocation1st",
+                    "label": "Neck Location 1st",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.687 in",
+                    "min": 1.0,
+                    "max": 3.0,
+                    "step": 0.001,
+                    "description": "Neck width at the 1st fret (nut width)."
+                },
+                {
+                    "name": "NeckLocation12th",
+                    "label": "Neck Location 12th",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "2.188 in",
+                    "min": 1.5,
+                    "max": 4.0,
+                    "step": 0.001,
+                    "description": "Neck width at the 12th fret."
+                }
+            ]
+        },
+        {
+            "id": "fretboard",
+            "label": "Fretboard",
+            "order": 3,
+            "parameters": [
+                {
+                    "name": "ScaleLengthSpacingBass",
+                    "label": "Scale Spacing Bass",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "25.50",
+                    "description": "Scale length spacing reference on bass side.",
+                    "notes": "Expression: if(( ScaleLengthBass == ScaleLengthTreb ); sqrt(( BridgeSpacing - NutSpacing ) ^ 2 / 4 + ScaleLengthBass ^ 2); ScaleLengthBass)",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "ScaleLengthSpacingTreb",
+                    "label": "Scale Spacing Treb",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "24.25",
+                    "description": "Scale length spacing reference on treble side.",
+                    "notes": "Expression: if(( ScaleLengthBass == ScaleLengthTreb ); sqrt(( BridgeSpacing - NutSpacing ) ^ 2 / 4 + ScaleLengthTreb ^ 2); ScaleLengthTreb)",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretboardThickness",
+                    "label": "Fretboard Thickness",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.1875",
+                    "min": 0.1,
+                    "max": 0.5,
+                    "step": 0.01,
+                    "description": "Overall thickness of the fretboard-- along the Z-axis",
+                    "notes": "Expression: ( 3 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretboardLengthBass",
+                    "label": "FB Length Bass",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "19.125",
+                    "description": "This draws the length of the fretboard's bass-edge so that the heel will be neutral with the final fret",
+                    "notes": "Expression: ScaleLengthBass * ( 1 - 1 / 2 ^ ( FretCount / 12 ) )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretboardLengthTreb",
+                    "label": "FB Length Treb",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "18.1875",
+                    "description": "This draws the length of the fretboard's treble-edge so that the heel will be neutral with the final fret",
+                    "notes": "Expression: ScaleLengthTreb * ( 1 - 1 / 2 ^ ( FretCount / 12 ) )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretboardLengthBassRND",
+                    "label": "FB Length Bass RND",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "19.50",
+                    "description": "This rounds the overall vertical length of the fretboard's bass-edge to the nearest 1/8\"",
+                    "notes": "Expression: ( round(FretboardLengthBass * 8) / 8 ) + HeelExtension",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretboardLengthTrebRND",
+                    "label": "FB Length Treb RND",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "18.625",
+                    "description": "This rounds the overall vertical length of the fretboard's treble-edge to the nearest 1/8\"",
+                    "notes": "Expression: ( round(FretboardLengthTreb * 8) / 8 ) + HeelExtension",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretSpacingBass",
+                    "label": "Fret Spacing Bass",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.431205027",
+                    "description": "The distance between the nut and the 1st fret intersection along the top-most string using \"on-center\" measurement. The length adjusts based on if the scale length is single or multi and accounts for the subtle difference between the two.",
+                    "notes": "Expression: if(( ScaleLengthBass == ScaleLengthTreb ); sqrt(( BridgeSpacing - NutSpacing ) ^ 2 / 4 + ScaleLengthBass ^ 2) * ( 1 - 1 / 2 ^ ( 1 / 12 ) ); ScaleLengthBass * ( 1 - 1 / 2 ^ ( 1 / 12 ) ))",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretSpacingTreb",
+                    "label": "Fret Spacing Treb",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.361047917",
+                    "description": "The distance between the nut and the 1st fret intersection along the bottom-most string using \"on-center\" measurement. The length adjusts based on if the scale length is single or multi and accounts for the subtle difference between the two.",
+                    "notes": "Expression: if(( ScaleLengthBass == ScaleLengthTreb ); sqrt(( BridgeSpacing - NutSpacing ) ^ 2 / 4 + ScaleLengthTreb ^ 2) * ( 1 - 1 / 2 ^ ( 1 / 12 ) ); ScaleLengthTreb * ( 1 - 1 / 2 ^ ( 1 / 12 ) ))",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "NeutralFretOffset",
+                    "label": "Neutral Fret Offset",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.506745553",
+                    "description": "This offsets the treble-edge of the fretboard to create the defined neutral fret",
+                    "notes": "Expression: ( ScaleLengthBass * ( 1 - 1 / 2 ^ ( NeutralFret / 12 ) ) - ScaleLengthTreb * ( 1 - 1 / 2 ^ ( NeutralFret / 12 ) ) )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "MarginNut",
+                    "label": "Margin Nut",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.09375",
+                    "description": "The distance between the center of the bass string and the edge of the fretboard at the nut-end",
+                    "notes": "Expression: ( 3 / 32 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "MarginHeel",
+                    "label": "Margin Heel",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.125",
+                    "description": "The distance between the center of the bass string and the edge of the fretboard at the heel-end",
+                    "notes": "Expression: ( 1 / 8 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "SaddleSpacing",
+                    "label": "Saddle Spacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.416",
+                    "description": "Spacing between each saddle-- center-to-center",
+                    "notes": "Expression: 0.416 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BridgeSpacing",
+                    "label": "Bridge Spacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "2.08",
+                    "description": "Spacing distance between the high and low strings at the bridge",
+                    "notes": "Expression: SaddleSpacing * ( StringCount - 1 )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretboardExtension",
+                    "label": "FB Extension",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.375",
+                    "description": "Length of the material forward of the nut-edge of the fretboard toward the headstock",
+                    "notes": "Expression: ( 3 / 8 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                }
+            ]
+        },
+        {
+            "id": "nut",
+            "label": "Nut",
+            "order": 4,
+            "parameters": [
+                {
+                    "name": "NutSlotSpacing",
+                    "label": "Nut Slot Spacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.2776",
+                    "description": "Spacing between each slot on the nut-- center-to-center",
+                    "notes": "Expression: 0.2776 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "NutSpacing",
+                    "label": "Nut Spacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.388",
+                    "description": "Spacing distance between the high and low strings at the nut",
+                    "notes": "Expression: NutSlotSpacing * ( StringCount - 1 )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "NutLength",
+                    "label": "Nut Length",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.652",
+                    "description": "Overall length of the nut-- along the Y-axis",
+                    "notes": "Expression: 1.652 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "NutWidth",
+                    "label": "Nut Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.126",
+                    "description": "Overall width of the nut-- along the X-axis",
+                    "notes": "Expression: 0.126 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "NutHeight",
+                    "label": "Nut Height",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.196",
+                    "description": "Overall height of the nut-- along the Z-axis",
+                    "notes": "Expression: 0.196 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "NutDepth",
+                    "label": "Nut Depth",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.125",
+                    "description": "The depth of which the nut slot must be cut",
+                    "notes": "Expression: 0.125 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "NutRadius",
+                    "label": "Nut Radius",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "10.00",
+                    "description": "Radius of the fretboard at the nut",
+                    "notes": "Expression: 10 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BlindNut",
+                    "label": "Blind Nut",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.0625",
+                    "description": "The distance from the edge of the fretboard to the end of the hidden tang",
+                    "notes": "Expression: ( 1 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                }
+            ]
+        },
+        {
+            "id": "frets",
+            "label": "Frets",
+            "order": 5,
+            "parameters": [
+                {
+                    "name": "TangWidth",
+                    "label": "Tang Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.023",
+                    "description": "Width of the fret tang for the fret slot",
+                    "notes": "Expression: 0.023 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "TangDepth",
+                    "label": "Tang Depth",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.055",
+                    "description": "Depth of the fret tang for the fret slot",
+                    "notes": "Expression: 0.055 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretCrownWidth",
+                    "label": "Crown Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.084",
+                    "description": "Width of the crown of the fret",
+                    "notes": "Expression: 0.084 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretCrownHeight",
+                    "label": "Crown Height",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.039",
+                    "description": "Height of the crown of the fret",
+                    "notes": "Expression: 0.039 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "ZeroFretCrownWidth",
+                    "label": "Zero Fret Crown W",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.084",
+                    "description": "Width of the crown of the zero fret",
+                    "notes": "Expression: FretCrownWidth",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "ZeroFretCrownHeight",
+                    "label": "Zero Fret Crown H",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.039",
+                    "description": "Height of the crown of the zero fret",
+                    "notes": "Expression: FretCrownHeight",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "ZeroFretAdjust",
+                    "label": "Zero Fret Adjust",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.00",
+                    "description": "Adjustment at the nut-edge of the fretboard for a Zero Fret",
+                    "notes": "Expression: FretCrownWidth * 0",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "HangFret",
+                    "label": "Hang Fret",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.125",
+                    "description": "This is a buffer for the frets to extend past the edges of the fretboard- 0 for Off, 1 for On",
+                    "notes": "Expression: BlindFret * 2",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BlindFret",
+                    "label": "Blind Fret",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.0625",
+                    "description": "The distance from the edge of the fretboard to the end of the hidden tang",
+                    "notes": "Expression: ( 1 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                }
+            ]
+        },
+        {
+            "id": "fret_markers",
+            "label": "Fret Markers",
+            "order": 6,
+            "parameters": [
+                {
+                    "name": "FretMarkerDiaTop",
+                    "label": "Marker Dia Top",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.1875",
+                    "description": "Diameter of the fret markers along the surface of the fretboard",
+                    "notes": "Expression: ( 3 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretMarkerDiaSide",
+                    "label": "Marker Dia Side",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.0625",
+                    "description": "Diameter of the fret markers along the edge of the fretboard",
+                    "notes": "Expression: ( 1 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretMarkerDepth",
+                    "label": "Marker Depth",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.0625",
+                    "description": "Depth of the fret markers from the surface of the fretboard",
+                    "notes": "Expression: ( 1 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretMarkerOctaveSpacing",
+                    "label": "Octave Spacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.00",
+                    "description": "The distance between the center points of the fret markers at the octaves",
+                    "notes": "Expression: 1 in",
+                    "editable": true,
+                    "deprecated": false
+                }
+            ]
+        },
+        {
+            "id": "heel",
+            "label": "Heel",
+            "order": 7,
+            "parameters": [
+                {
+                    "name": "HeelExtension",
+                    "label": "Heel Extension",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.375",
+                    "description": "Length of the material beyond of the final fret of the fretboard toward the bridge",
+                    "notes": "Expression: ( 3 / 8 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeelTransitionFret",
+                    "label": "Heel Trans. Fret",
+                    "unitKind": "unitless",
+                    "controlType": "number",
+                    "default": "17",
+                    "min": 1,
+                    "max": 36,
+                    "step": 1,
+                    "description": "Fret number where the heel transition begins.",
+                    "notes": "Expression: 17",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeelTransition",
+                    "label": "Heel Transition",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "15.557402866",
+                    "description": "Length of the heel transition zone.",
+                    "notes": "Expression: ( ( ScaleLengthBass + ScaleLengthTreb ) / 2 ) * ( 1 - 1 / ( 2 ^ ( HeelTransitionFret / 12 ) ) )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "HeelRadius",
+                    "label": "Heel Radius",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "16.00",
+                    "description": "Radius of the fretboard at the heel",
+                    "notes": "Expression: 16 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeelCurveRadius",
+                    "label": "Heel Curve Radius",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "4.00",
+                    "description": "Radius of the fretboard heel-edge curve",
+                    "notes": "Expression: 4 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeelFillet",
+                    "label": "Heel Fillet",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.1875",
+                    "description": "Fillet radius for the fretboard heeledge corners",
+                    "notes": "Expression: ( 3 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                }
+            ]
+        },
+        {
+            "id": "scallops",
+            "label": "Scallops",
+            "order": 8,
+            "parameters": [
+                {
+                    "name": "FretScallopWidth",
+                    "label": "Scallop Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.168",
+                    "description": "This value is the buffer from the edge of the scallop to the fret",
+                    "notes": "Expression: ( FretCrownWidth * 2 )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FretScallopDepthBass",
+                    "label": "Scallop Depth Bass",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.0625",
+                    "description": "Depth of the scallop cut on the bass edge",
+                    "notes": "Expression: ( 1 / 16 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretScallopDepthTreb",
+                    "label": "Scallop Depth Treb",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.125",
+                    "description": "Depth of the scallop cut on the treble edge",
+                    "notes": "Expression: ( 1 / 8 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FretScallopFillet",
+                    "label": "Scallop Fillet",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.125",
+                    "description": "This fillet is used to help blend the scallop into the fretboard as desired",
+                    "notes": "Expression: ( 1 / 8 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                }
+            ]
+        },
+        {
+            "id": "fall_away",
+            "label": "Fall-away",
+            "order": 9,
+            "parameters": [
+                {
+                    "name": "FallAwayFret",
+                    "label": "Fall-away Fret",
+                    "unitKind": "unitless",
+                    "controlType": "number",
+                    "default": "14",
+                    "min": 1,
+                    "max": 36,
+                    "step": 1,
+                    "description": "At which fret the fallaway taper begings",
+                    "notes": "Expression: 14",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "FallAwayLength",
+                    "label": "Fall-away Length",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "13.447853043",
+                    "description": "The distance from the nut for the starting point of the falloff curve",
+                    "notes": "Expression: ScaleLengthTreb * ( 1 - 1 / 2 ^ ( FallAwayFret / 12 ) )",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "FallAwayDepth",
+                    "label": "Fall-away Depth",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.125",
+                    "description": "The depth from the fretboard height at the heel-end which the taper terminates",
+                    "notes": "Expression: FretboardThickness - 0.0625 in",
+                    "editable": false,
+                    "deprecated": true
+                }
+            ]
+        },
+        {
+            "id": "headstock",
+            "label": "Headstock",
+            "order": 10,
+            "parameters": [
+                {
+                    "name": "HeadstockLength",
+                    "label": "Headstock Length",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "6.375",
+                    "description": "Overall length of the headstock-- along the X-axis",
+                    "notes": "Expression: 6.375 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeadstockWidth",
+                    "label": "Headstock Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "2.4375",
+                    "description": "Overall width of the headstock-- along the Y-axis",
+                    "notes": "Expression: 2.4375 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeadstockThickness",
+                    "label": "Headstock Thick.",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.55 in",
+                    "description": "Thickness of the headstock."
+                },
+                {
+                    "name": "HeadstockEndSpacing",
+                    "label": "HS End Spacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.59375",
+                    "description": "String spacing at the end of the headstock.",
+                    "notes": "Expression: 1.59375 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeadstockEndAngle",
+                    "label": "HS End Angle",
+                    "unitKind": "angle",
+                    "controlType": "number",
+                    "default": "70.00",
+                    "min": -45,
+                    "max": 45,
+                    "step": 0.5,
+                    "description": "Angle of the headstock tip.",
+                    "notes": "Expression: 70 deg",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HeadstockAngle",
+                    "label": "Headstock Angle",
+                    "unitKind": "angle",
+                    "controlType": "number",
+                    "default": "10.00",
+                    "min": 0,
+                    "max": 30,
+                    "step": 0.5,
+                    "description": "Headstock back-angle.",
+                    "notes": "Expression: 10 deg",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HyoidDistance",
+                    "label": "Hyoid Distance",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.00",
+                    "description": "Distance between the nut and the hyoid of the headstock",
+                    "notes": "Expression: 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HyoidBass",
+                    "label": "Hyoid Bass",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.00",
+                    "description": "Hyoid offset on the bass side.",
+                    "notes": "Expression: 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "HyoidTreb",
+                    "label": "Hyoid Treb",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.00",
+                    "description": "Hyoid offset on the treble side.",
+                    "notes": "Expression: 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "VoluteThickness",
+                    "label": "Volute Thickness",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.1875",
+                    "description": "Thickness of the volute.",
+                    "notes": "Expression: if(( HeadstockAngle == 0 deg ); NeckThickness - FretboardThickness; NeckThickness + FretboardThickness)",
+                    "editable": false,
+                    "deprecated": true
+                }
+            ]
+        },
+        {
+            "id": "body",
+            "label": "Body",
+            "order": 11,
+            "parameters": [
+                {
+                    "name": "BodyLength",
+                    "label": "Body Length",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "15.9375",
+                    "description": "Overall length of the body-- along the X-axis",
+                    "notes": "Expression: 15.9375 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BodyWidth",
+                    "label": "Body Width",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "12.75",
+                    "description": "Overall width of the body-- along the Y-axis",
+                    "notes": "Expression: 12.75 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BodyThickness",
+                    "label": "Body Thickness",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "1.75 in",
+                    "description": "Thickness of the guitar body."
+                },
+                {
+                    "name": "BindingInset",
+                    "label": "Binding Inset",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.03125",
+                    "description": "The distance inward to reduce the perimeter of the fretboard for applying a binding",
+                    "notes": "Expression: ( 1 / 32 ) * 1 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BoutBottomAngle",
+                    "label": "Bout Bottom Angle",
+                    "unitKind": "angle",
+                    "controlType": "number",
+                    "default": "85.00",
+                    "min": -90,
+                    "max": 90,
+                    "step": 0.5,
+                    "description": "Angle of the bottom bout.",
+                    "notes": "Expression: 85 deg",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BoutWaistAngle",
+                    "label": "Bout Waist Angle",
+                    "unitKind": "angle",
+                    "controlType": "number",
+                    "default": "80.00",
+                    "min": -90,
+                    "max": 90,
+                    "step": 0.5,
+                    "description": "Angle of the waist bout.",
+                    "notes": "Expression: 80 deg",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BoutTopAngle",
+                    "label": "Bout Top Angle",
+                    "unitKind": "angle",
+                    "controlType": "number",
+                    "default": "75.00",
+                    "min": -90,
+                    "max": 90,
+                    "step": 0.5,
+                    "description": "Angle of the top bout.",
+                    "notes": "Expression: 75 deg",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BoutShoulderAngle",
+                    "label": "Bout Shoulder Angle",
+                    "unitKind": "angle",
+                    "controlType": "number",
+                    "default": "90.00",
+                    "min": -90,
+                    "max": 90,
+                    "step": 0.5,
+                    "description": "Angle of the shoulder bout.",
+                    "notes": "Expression: 90 deg",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "BoutWidth1",
+                    "label": "Bout Width 1",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "6.375",
+                    "description": "Width of bout section 1.",
+                    "notes": "Expression: BodyWidth / 2",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BoutWidth2",
+                    "label": "Bout Width 2",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "5.10",
+                    "description": "Width of bout section 2 (waist).",
+                    "notes": "Expression: BodyWidth / 2.5",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BoutWidth3",
+                    "label": "Bout Width 3",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "4.25",
+                    "description": "Width of bout section 3 (upper).",
+                    "notes": "Expression: BodyWidth / 3",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BoutLength1",
+                    "label": "Bout Length 1",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "3.984375",
+                    "description": "Length of bout section 1.",
+                    "notes": "Expression: BodyLength * 0.25",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BoutLength2",
+                    "label": "Bout Length 2",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "5.9765625",
+                    "description": "Length of bout section 2.",
+                    "notes": "Expression: BodyLength * 0.375",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BoutLength3",
+                    "label": "Bout Length 3",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "3.5859375",
+                    "description": "Length of bout section 3.",
+                    "notes": "Expression: BodyLength * 0.225",
+                    "editable": false,
+                    "deprecated": true
+                },
+                {
+                    "name": "BoutLength4",
+                    "label": "Bout Length 4",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "2.390625",
+                    "description": "Length of bout section 4.",
+                    "notes": "Expression: BodyLength * 0.15",
+                    "editable": false,
+                    "deprecated": true
+                }
+            ]
+        },
+        {
+            "id": "strings",
+            "label": "Strings",
+            "order": 12,
+            "parameters": [
+                {
+                    "name": "StringGauge1",
+                    "label": "String Gauge 1",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.011",
+                    "description": "In standard tuning- typically your ' e ' string",
+                    "notes": "Expression: 0.011 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge2",
+                    "label": "String Gauge 2",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.014",
+                    "description": "In standard tuning- typically your ' B ' string",
+                    "notes": "Expression: 0.014 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge3",
+                    "label": "String Gauge 3",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.018",
+                    "description": "In standard tuning- typically your ' G ' string",
+                    "notes": "Expression: 0.018 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge4",
+                    "label": "String Gauge 4",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.028",
+                    "description": "In standard tuning- typically your ' D ' string",
+                    "notes": "Expression: 0.028 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge5",
+                    "label": "String Gauge 5",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.038",
+                    "description": "In standard tuning- typically your ' A ' string",
+                    "notes": "Expression: 0.038 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge6",
+                    "label": "String Gauge 6",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.049",
+                    "description": "In standard tuning- typically your ' E ' string",
+                    "notes": "Expression: 0.049 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge7",
+                    "label": "String Gauge 7",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.00",
+                    "description": "Reserved for 7-string guitar",
+                    "notes": "Expression: 0 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringGauge8",
+                    "label": "String Gauge 8",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.00",
+                    "description": "Reserved for 8-string guitar",
+                    "notes": "Expression: 0 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringAction",
+                    "label": "String Action",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.0625",
+                    "description": "The clearance between the bottom of strings and the crown of the frets",
+                    "notes": "Expression: 0.0625 in",
+                    "editable": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "StringEquispacing",
+                    "label": "String Equispacing",
+                    "unitKind": "length",
+                    "controlType": "number",
+                    "default": "0.205",
+                    "description": "The equal distance between each string",
+                    "notes": "Expression: ( NutSpacing - StringGauge1 - StringGauge2 - StringGauge3 - StringGauge4 - StringGauge5 - StringGauge6 - StringGauge7 - StringGauge8 ) / StringCount",
+                    "editable": false,
+                    "deprecated": true
+                }
+            ]
+        }
+    ]
+}
