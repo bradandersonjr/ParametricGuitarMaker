@@ -4,7 +4,7 @@
 import os
 
 # Debug mode: set True during development, False for distribution.
-DEBUG = True
+DEBUG = False
 
 # Add-in identity — derived from the folder name automatically.
 ADDIN_NAME = os.path.basename(os.path.dirname(__file__))
@@ -12,7 +12,7 @@ COMPANY_NAME = 'ParametricGuitar'
 
 # Palette configuration
 PALETTE_ID = f'{COMPANY_NAME}_{ADDIN_NAME}_palette'
-PALETTE_NAME = 'Parametric Guitar: Fretboard Maker'
+PALETTE_NAME = 'Parametric Guitar: Fretboard Maker [BETA]'
 
 # Add-in root directory (absolute path to this folder)
 ADDIN_ROOT = os.path.dirname(os.path.abspath(__file__))

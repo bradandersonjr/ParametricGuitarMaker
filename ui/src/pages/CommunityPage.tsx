@@ -1,6 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { openUrl } from "@/lib/fusion-bridge"
-import { Youtube, MessageCircle, Globe, Users } from "lucide-react"
+import { IconBrandYoutube, IconBrandFacebook, IconBrandDiscord, IconBrowser } from "@tabler/icons-react"
 
 export function CommunityPage() {
   return (
@@ -21,7 +21,7 @@ export function CommunityPage() {
           >
             <div className="flex items-start gap-3">
               <div className="pt-1">
-                <Youtube className="size-5 text-red-500 group-hover:text-red-600" />
+                <IconBrandYoutube className="size-5 text-red-500 group-hover:text-red-600" stroke={2} />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold font-heading">YouTube Channel</h3>
@@ -40,10 +40,10 @@ export function CommunityPage() {
           >
             <div className="flex items-start gap-3">
               <div className="pt-1">
-                <Globe className="size-5 text-blue-500 group-hover:text-blue-600" />
+                <IconBrowser className="size-5 text-amber-900 group-hover:text-amber-950" stroke={2} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold font-heading">ParametricGuitar.com</h3>
+                <h3 className="text-sm font-semibold font-heading">Website</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   Official website with documentation, resources, and project information.
                 </p>
@@ -59,14 +59,14 @@ export function CommunityPage() {
           >
             <div className="flex items-start gap-3">
               <div className="pt-1">
-                <MessageCircle className="size-5 text-indigo-500 group-hover:text-indigo-600" />
+                <IconBrandDiscord className="size-5 text-indigo-500 group-hover:text-indigo-600" stroke={2} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold font-heading">The Parametric Guitar Project</h3>
+                <h3 className="text-sm font-semibold font-heading">Discord Server</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   Join our Discord community to chat with other users, ask questions, and share your designs.
                 </p>
-                <p className="text-xs text-primary mt-2">discord.gg/KQ8NvAFksZ →</p>
+                <p className="text-xs text-primary mt-2">The Parametric Guitar Project →</p>
               </div>
             </div>
           </button>
@@ -78,7 +78,7 @@ export function CommunityPage() {
           >
             <div className="flex items-start gap-3">
               <div className="pt-1">
-                <Users className="size-5 text-blue-600 group-hover:text-blue-700" />
+                <IconBrandFacebook className="size-5 text-blue-600 group-hover:text-blue-700" stroke={2} />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold font-heading">Facebook Group</h3>

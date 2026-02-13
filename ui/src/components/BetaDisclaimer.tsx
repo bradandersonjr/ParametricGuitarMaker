@@ -28,6 +28,10 @@ export function BetaDisclaimer({
           Parametric Guitar: Fretboard Maker is currently in beta. While we've tested extensively, you may encounter bugs or unexpected behavior. Always verify generated models before using them in production.
         </p>
 
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Models generated in this beta version may not be compatible with future updates. As the application evolves, design files created now may require modifications or may not open correctly in later versions.
+        </p>
+
         <Button
           onClick={handleAccept}
           className="w-full"

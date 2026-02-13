@@ -14,7 +14,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import type { PageId } from "@/types"
-import { SlidersHorizontal, FileBarChart, Scroll, HelpCircle, Users, Heart, Info, LayoutTemplate } from "lucide-react"
+import { SlidersHorizontal, FileBarChart, Scroll, HelpCircle, Users, Heart, Info, LayoutTemplate, Bug, ExternalLink } from "lucide-react"
+import { openUrl } from "@/lib/fusion-bridge"
 import IconSvg from "@/assets/icon.svg"
 
 const NAV_ITEMS: { id: PageId; label: string; icon: typeof SlidersHorizontal }[] = [
@@ -53,7 +54,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="pointer-events-none">
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <img src={IconSvg} alt="App" className="size-4" />
+                <img src={IconSvg} alt="App" className="size-4 brightness-0 invert" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold font-heading">Fretboard</span>
@@ -98,6 +99,18 @@ export function AppSidebar({
               <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${connected ? "bg-green-500" : "bg-red-500"}`} />
               <span className="text-xs text-muted-foreground">
                 {connected ? "Connected" : "Connecting..."}
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="View Issues (opens in browser)"
+              onClick={() => openUrl("https://github.com/bradandersonjr/ParametricGuitarFretboardMaker/issues")}
+            >
+              <Bug />
+              <span className="flex items-center gap-1">
+                Issues
+                <ExternalLink className="w-3 h-3 opacity-60" />
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
