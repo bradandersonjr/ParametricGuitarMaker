@@ -14,6 +14,7 @@ from datetime import date
 from ...lib import fusionAddInUtils as futil
 from ... import config
 from ...lib import parameter_bridge
+from ...lib import preferences
 
 # ── Deferred apply event ─────────────────────────────────────────────
 _APPLY_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_applyParams'
@@ -70,6 +71,14 @@ _owner_document = None          # The document that owns the palette
 
 def start(is_startup=False):
     """Register the toolbar button when the add-in starts."""
+    # Reset beta-disclaimer opt-out on every add-in start.
+    # This makes stop/run always show the disclaimer again.
+    try:
+        preferences.update_preferences({'betaDisclaimerDismissedVersion': None})
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Failed to reset beta disclaimer preference on start: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+
     # Clean up any stale control/definition from a previous run that didn't stop cleanly.
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
@@ -222,7 +231,9 @@ def _show_palette(payload):
         _pending_payload = payload
         futil.log(f'{CMD_NAME}: Waiting for JS ready signal...')
     else:
-        # Palette exists, JS loaded — send immediately
+        # Palette exists, JS already loaded — push preferences first, then payload.
+        # This ensures the disclaimer re-evaluates on every palette open (including stop/run).
+        _push_preferences(palette)
         _send_payload(palette, payload)
 
 
@@ -246,6 +257,40 @@ def _on_open_url(data_json):
             futil.log(f'{CMD_NAME}: Opened URL: {url}')
     except Exception as e:
         futil.log(f'{CMD_NAME}: Error opening URL: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+
+
+def _push_preferences(palette):
+    """Push current preferences to the UI palette."""
+    try:
+        prefs = preferences.load_preferences()
+        data_json = json.dumps(prefs)
+        palette.sendInfoToHTML('PREFERENCES_LOADED', data_json)
+        futil.log(f'{CMD_NAME}: Pushed preferences to UI — betaDisclaimerDismissedVersion={prefs.get("betaDisclaimerDismissedVersion")}', force_console=True)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Error pushing preferences: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+
+
+def _on_get_preferences():
+    """Send current preferences to the UI (called by JS GET_PREFERENCES)."""
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if palette:
+        _push_preferences(palette)
+
+
+def _on_save_preferences(data_json):
+    """Save preferences from the UI to file."""
+    try:
+        data = json.loads(data_json)
+        success = preferences.save_preferences(data)
+        palette = ui.palettes.itemById(PALETTE_ID)
+        if palette:
+            response = {'success': success}
+            palette.sendInfoToHTML('PREFERENCES_SAVED', json.dumps(response))
+            futil.log(f'{CMD_NAME}: Saved preferences', force_console=True)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Error saving preferences: {e}',
                   adsk.core.LogLevels.ErrorLogLevel)
 
 
@@ -640,6 +685,12 @@ def palette_incoming(args: adsk.core.HTMLEventArgs):
     elif action == 'REMAP_HOLE_TO_SELECTION_SET':
         _queue_hole_position_op(args.data)
 
+    elif action == 'GET_PREFERENCES':
+        _on_get_preferences()
+
+    elif action == 'SAVE_PREFERENCES':
+        _on_save_preferences(args.data)
+
     elif action == 'response':
         pass  # Fusion internal acknowledgment — ignore
 
@@ -662,6 +713,9 @@ def _on_palette_ready():
     if not palette:
         futil.log(f'{CMD_NAME}: _on_palette_ready — no palette found!')
         return
+
+    # Always push preferences first so the disclaimer decision is made before payload arrives
+    _push_preferences(palette)
 
     design = adsk.fusion.Design.cast(app.activeProduct)
     if design:

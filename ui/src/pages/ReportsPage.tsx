@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { buildGuitarReport } from "@/lib/guitar-math"
+import { usePreferences } from "@/hooks/usePreferences"
 import type { ModelPayload } from "@/types"
 import { ChevronDown, ChevronRight, Ruler, Music, Guitar, Triangle } from "lucide-react"
 
@@ -74,24 +75,14 @@ function PrecisionSlider({ value, onChange }: { value: number; onChange: (v: num
 // ── Reports page ───────────────────────────────────────────────────
 
 export function ReportsPage({ payload }: { payload: ModelPayload | null }) {
-  const [precision, setPrecisionState] = useState(() => {
-    const stored = localStorage.getItem("reportsPrecision")
-    return stored ? parseInt(stored) : 4
-  })
+  const [prefs, updatePrefs] = usePreferences()
+  const precision = prefs.reportsPrecision
   const report = useMemo(() => (payload ? buildGuitarReport(payload) : null), [payload])
   const documentUnit = payload?.documentUnit ?? "in"
 
   const setPrecision = (value: number) => {
-    setPrecisionState(value)
-    localStorage.setItem("reportsPrecision", value.toString())
+    updatePrefs({ reportsPrecision: value })
   }
-
-  useEffect(() => {
-    const stored = localStorage.getItem("reportsPrecision")
-    if (stored) {
-      setPrecisionState(parseInt(stored))
-    }
-  }, [])
 
   if (!report) {
     return (

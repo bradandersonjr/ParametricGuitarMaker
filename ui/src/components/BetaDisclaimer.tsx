@@ -1,4 +1,6 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -19,13 +21,13 @@ declare const __APP_VERSION__: string
 export function BetaDisclaimer({
   onAccept,
 }: {
-  onAccept: () => void
+  onAccept: (dontShowAgain: boolean) => void
 }) {
   const isMobile = useIsMobile()
+  const [dontShowAgain, setDontShowAgain] = useState(false)
 
   const handleAccept = () => {
-    localStorage.setItem("beta-disclaimer-version", __APP_VERSION__)
-    onAccept()
+    onAccept(dontShowAgain)
   }
 
   const content = (
@@ -44,6 +46,20 @@ export function BetaDisclaimer({
       <p className="text-sm text-muted-foreground leading-relaxed">
         Models generated in this beta version may not be compatible with future updates. As the application evolves, design files created now may require modifications or may not open correctly in later versions.
       </p>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="dont-show-again"
+          checked={dontShowAgain}
+          onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+        />
+        <label
+          htmlFor="dont-show-again"
+          className="text-xs text-muted-foreground cursor-pointer select-none"
+        >
+          Don't show this again
+        </label>
+      </div>
 
       <Button
         onClick={handleAccept}

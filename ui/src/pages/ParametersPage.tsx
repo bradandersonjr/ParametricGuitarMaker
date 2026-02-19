@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react"
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -15,11 +15,31 @@ import {
 } from "@/components/ui/drawer"
 import { sendToPython } from "@/lib/fusion-bridge"
 import type { ModelPayload, ParameterGroup, Parameter, PendingParam } from "@/types"
-import { ChevronDown, ChevronRight, LayoutGrid, X, Search, Undo2, Redo2, Plus, Minus, AlertCircle, RefreshCw, RotateCcw, Check } from "lucide-react"
+import { ChevronDown, ChevronRight, LayoutGrid, X, Search, Undo2, Redo2, Plus, Minus, AlertCircle, RefreshCw, RotateCcw, Check, GripVertical } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { HistoryPopover, IconTooltip } from "@/components/HistoryPopover"
 import { TimelinePanel } from "@/components/TimelinePanel"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { usePreferences } from "@/hooks/usePreferences"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -1034,6 +1054,33 @@ function AddParamForm({
   )
 }
 
+// ── Sortable group wrapper ─────────────────────────────────────────
+
+function SortableGroupItem({ id, children }: { id: string; children: (dragHandleProps: Record<string, unknown>) => React.ReactNode }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : undefined,
+    position: "relative" as const,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ ...attributes, ...listeners })}
+    </div>
+  )
+}
+
 // ── Group section ──────────────────────────────────────────────────
 
 function GroupSection({
@@ -1065,6 +1112,7 @@ function GroupSection({
   onRemoveCustomCategory,
   isInitial,
   disabled,
+  dragHandleProps,
 }: {
   group: ParameterGroup
   displayValues: Record<string, string>
@@ -1094,6 +1142,7 @@ function GroupSection({
   onRemoveCustomCategory: (id: string) => void
   isInitial: boolean
   disabled?: boolean
+  dragHandleProps?: Record<string, unknown>
 }) {
   const [open, setOpen] = useState(defaultOpen)
 
@@ -1140,10 +1189,20 @@ function GroupSection({
 
   return (
     <div className={`border rounded-lg overflow-hidden ${disabled ? "border-border/50 opacity-60" : "border-border"}`}>
-      <button
-        className={`w-full flex items-center gap-2 px-3 py-2 transition-colors text-left rounded-t-lg ${disabled ? "bg-muted/20 hover:bg-muted/30" : "bg-muted/40 hover:bg-muted/70"}`}
-        onClick={() => setOpen((o) => !o)}
-      >
+      <div className={`w-full flex items-center gap-0 transition-colors text-left rounded-t-lg group/header ${disabled ? "bg-muted/20" : "bg-muted/40 hover:bg-muted/70"}`}>
+        {dragHandleProps && !searchQuery && (
+          <span
+            {...dragHandleProps}
+            className="flex items-center justify-center px-1 py-2 cursor-grab active:cursor-grabbing text-muted-foreground/50 group-hover/header:text-muted-foreground transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical size={12} />
+          </span>
+        )}
+        <button
+          className={`flex-1 flex items-center gap-2 px-2 py-2 transition-colors text-left ${!dragHandleProps || searchQuery ? "pl-3" : ""} ${disabled ? "hover:bg-muted/30" : "bg-transparent"}`}
+          onClick={() => setOpen((o) => !o)}
+        >
         <span className="text-muted-foreground">
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </span>
@@ -1169,7 +1228,8 @@ function GroupSection({
             New Parameter
           </span>
         )}
-      </button>
+        </button>
+      </div>
       {open && (
         <div className="px-3 py-3 space-y-2">
           {filteredParams.map((param) => {
@@ -1323,6 +1383,45 @@ export function ParametersPage({
 
   const isInitial = !payload?.hasFingerprint
   const documentUnit = payload?.documentUnit ?? "in"
+
+  // ── Group reordering via drag-and-drop ──────────────────────────
+  const [prefs, updatePrefs] = usePreferences()
+  const [activeGroupDragId, setActiveGroupDragId] = useState<string | null>(null)
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const sortedGroups = useMemo(() => {
+    if (!payload) return []
+    const order = prefs.groupOrder
+    if (!order) return payload.groups
+    const map = new Map(payload.groups.map((g) => [g.id, g]))
+    const ordered = order.filter((id) => map.has(id)).map((id) => map.get(id)!)
+    // Append any new groups not in saved order
+    payload.groups.forEach((g) => { if (!order.includes(g.id)) ordered.push(g) })
+    return ordered
+  }, [payload, prefs.groupOrder])
+
+  const handleGroupDragStart = useCallback((event: DragStartEvent) => {
+    setActiveGroupDragId(event.active.id as string)
+  }, [])
+
+  const handleGroupDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveGroupDragId(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = sortedGroups.findIndex((g) => g.id === active.id)
+    const newIndex = sortedGroups.findIndex((g) => g.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const newOrder = arrayMove(sortedGroups.map((g) => g.id), oldIndex, newIndex)
+    updatePrefs({ groupOrder: newOrder })
+  }, [sortedGroups, updatePrefs])
+
+  const activeGroupForOverlay = activeGroupDragId
+    ? sortedGroups.find((g) => g.id === activeGroupDragId)
+    : null
 
   // All known parameter names (schema + extra from design + pending) — used for duplicate validation
   const allParamNames = useMemo(() => {
@@ -1872,39 +1971,63 @@ export function ParametersPage({
             <p className="text-sm text-muted-foreground">Loading parameters...</p>
           ) : (
             <>
-              {payload.groups.map((group: ParameterGroup) => (
-                <GroupSection
-                  key={group.id}
-                  group={group}
-                  displayValues={displayValues}
-                  originalExpressions={originalExpressions}
-                  onChange={handleParamChange}
-                  onFocus={handleParamFocus}
-                  onBlur={handleParamBlur}
-                  defaultOpen={true}
-                  searchQuery={searchQuery}
-                  scaleMode={scaleMode}
-                  documentUnit={payload.documentUnit ?? "in"}
-                  validationErrors={validationErrors}
-                  editStartValues={editStartValues}
-                  errorFilter={showErrorFilter ? new Set(Object.keys(validationErrors)) : null}
-                  pendingParams={pendingParams.filter((p) => p.groupId === group.id)}
-                  categorizedExtras={(payload.extraParams ?? []).filter((p) => p.group === group.id)}
-                  groupSchemas={payload.groups.map((g) => ({ id: g.id, label: g.label }))}
-                  isAddFormOpen={activeAddFormGroupId === group.id}
-                  onOpenAddForm={() => { setActiveAddFormGroupId(group.id); setActiveAddFormCustomCategoryId(null) }}
-                  onCloseAddForm={() => setActiveAddFormGroupId(null)}
-                  onRemovePendingParam={handleRemovePendingParam}
-                  onPendingParamChange={handlePendingParamChange}
-                  allParamNames={allParamNames}
-                  showAddButton={!isInitial}
-                  customCategories={customCategories}
-                  onAddCustomCategory={handleAddCustomCategory}
-                  onRemoveCustomCategory={handleRemoveCustomCategory}
-                  isInitial={isInitial}
-                  disabled={group.id === "scallops" || group.id === "fall_away"}
-                />
-              ))}
+              <DndContext
+                sensors={dndSensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleGroupDragStart}
+                onDragEnd={handleGroupDragEnd}
+              >
+                <SortableContext items={sortedGroups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
+                  {sortedGroups.map((group: ParameterGroup) => (
+                    <SortableGroupItem key={group.id} id={group.id}>
+                      {(dragHandleProps) => (
+                        <GroupSection
+                          group={group}
+                          displayValues={displayValues}
+                          originalExpressions={originalExpressions}
+                          onChange={handleParamChange}
+                          onFocus={handleParamFocus}
+                          onBlur={handleParamBlur}
+                          defaultOpen={true}
+                          searchQuery={searchQuery}
+                          scaleMode={scaleMode}
+                          documentUnit={payload.documentUnit ?? "in"}
+                          validationErrors={validationErrors}
+                          editStartValues={editStartValues}
+                          errorFilter={showErrorFilter ? new Set(Object.keys(validationErrors)) : null}
+                          pendingParams={pendingParams.filter((p) => p.groupId === group.id)}
+                          categorizedExtras={(payload.extraParams ?? []).filter((p) => p.group === group.id)}
+                          groupSchemas={payload.groups.map((g) => ({ id: g.id, label: g.label }))}
+                          isAddFormOpen={activeAddFormGroupId === group.id}
+                          onOpenAddForm={() => { setActiveAddFormGroupId(group.id); setActiveAddFormCustomCategoryId(null) }}
+                          onCloseAddForm={() => setActiveAddFormGroupId(null)}
+                          onRemovePendingParam={handleRemovePendingParam}
+                          onPendingParamChange={handlePendingParamChange}
+                          allParamNames={allParamNames}
+                          showAddButton={!isInitial}
+                          customCategories={customCategories}
+                          onAddCustomCategory={handleAddCustomCategory}
+                          onRemoveCustomCategory={handleRemoveCustomCategory}
+                          isInitial={isInitial}
+                          disabled={group.id === "scallops" || group.id === "fall_away"}
+                          dragHandleProps={dragHandleProps}
+                        />
+                      )}
+                    </SortableGroupItem>
+                  ))}
+                </SortableContext>
+                <DragOverlay>
+                  {activeGroupForOverlay && (
+                    <div className="border border-border rounded-lg bg-muted/40 shadow-lg opacity-90">
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <GripVertical size={12} className="text-muted-foreground" />
+                        <LayoutGrid size={13} className="text-muted-foreground shrink-0" />
+                        <span className="text-xs font-semibold font-heading">{activeGroupForOverlay.label}</span>
+                      </div>
+                    </div>
+                  )}
+                </DragOverlay>
+              </DndContext>
 
               {/* Custom category sections — one per custom category */}
               {!isInitial && customCategories.map((cat) => (

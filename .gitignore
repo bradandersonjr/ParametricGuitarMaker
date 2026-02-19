@@ -15,6 +15,7 @@ ui/src/announcements.md
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # IDE
 .vscode/
@@ -25,3 +26,6 @@ Thumbs.db
 
 # Local documentation (not pushed to GitHub)
 docs/
+
+# User preferences (created and modified per user)
+preferences.json

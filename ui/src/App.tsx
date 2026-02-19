@@ -22,23 +22,39 @@ import type { PageId } from "@/types"
 
 declare const __APP_VERSION__: string
 const APP_VERSION = __APP_VERSION__
+const BETA_DISCLAIMER_SESSION_KEY = "pgfm_beta_disclaimer_dismissed_session"
 
 function App() {
   const [activePage, setActivePage] = useState<PageId>("parameters")
   const [importSuccess, setImportSuccess] = useState(false)
-  const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(false)
+  const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(true)
   const { payload, connected, templateList } = useModelPayload()
   const versionInfo = useVersionCheck(APP_VERSION)
 
   useEffect(() => {
-    // Always show beta disclaimer when palette opens
-    setShowBetaDisclaimer(true)
+    const syncDisclaimerVisibility = () => {
+      const dismissedThisSession = sessionStorage.getItem(BETA_DISCLAIMER_SESSION_KEY) === "1"
+      if (dismissedThisSession) {
+        setShowBetaDisclaimer(false)
+        sendToPython("GET_MODEL_STATE")
+      } else {
+        setShowBetaDisclaimer(true)
+      }
+    }
+
+    syncDisclaimerVisibility()
+    document.addEventListener("visibilitychange", syncDisclaimerVisibility)
+    return () => document.removeEventListener("visibilitychange", syncDisclaimerVisibility)
   }, [])
 
-  const handleDisclaimerAccept = useCallback(() => {
+  const handleDisclaimerAccept = useCallback((dontShowAgain: boolean) => {
+    if (dontShowAgain) {
+      sessionStorage.setItem(BETA_DISCLAIMER_SESSION_KEY, "1")
+    } else {
+      sessionStorage.removeItem(BETA_DISCLAIMER_SESSION_KEY)
+    }
+
     setShowBetaDisclaimer(false)
-    // Request a fresh payload now that Fusion is fully settled — ensures the
-    // correct document unit (mm vs in) is read after any startup race.
     sendToPython("GET_MODEL_STATE")
   }, [])
 
@@ -71,7 +87,7 @@ function App() {
 
             <AnnouncementBar />
 
-            {/* Pages — ParametersPage is always mounted (hidden) to preserve edit state */}
+            {/* Pages - ParametersPage is always mounted (hidden) to preserve edit state */}
             <div className={activePage === "parameters" ? "flex flex-col flex-1 min-h-0" : "hidden"}>
               <ParametersPage
                 payload={payload}
@@ -90,7 +106,6 @@ function App() {
                 version={APP_VERSION}
                 onImportLoaded={() => {
                   setImportSuccess(true)
-                  // Short timeout to ensure state update propagates before navigation
                   setTimeout(() => setActivePage("parameters"), 50)
                 }}
               />

@@ -2,7 +2,7 @@
 
 ## What Was Built (Feb 13, 2026)
 
-A comprehensive timeline group and feature management system for suppressing/unsuppressing Fusion 360 timeline items, groups, and features.
+A comprehensive timeline group and feature management system for suppressing/unsuppressing Autodesk Fusion timeline items, groups, and features.
 
 ### Files Created/Modified
 

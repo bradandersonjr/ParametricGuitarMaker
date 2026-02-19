@@ -21,8 +21,8 @@ declare global {
   }
 }
 
-export type IncomingAction = "PUSH_MODEL_STATE" | "PUSH_TEMPLATES" | "COMPUTING" | "response" | "PUSH_TIMELINE_ITEMS" | "PUSH_TIMELINE_SUMMARY" | "TIMELINE_OPERATION_RESULT" | "HOLE_POSITION_RESULT"
-export type OutgoingAction = "ready" | "GET_MODEL_STATE" | "APPLY_PARAMS" | "cancel" | "OPEN_URL" | "GET_TEMPLATES" | "LOAD_TEMPLATE" | "IMPORT_SHARE" | "SAVE_TEMPLATE" | "DELETE_TEMPLATE" | "OPEN_TEMPLATES_FOLDER" | "GET_TIMELINE_ITEMS" | "GET_TIMELINE_SUMMARY" | "APPLY_TIMELINE_CHANGES" | "SET_PARAM_CATEGORY" | "EDIT_PARAM" | "DELETE_PARAM" | "REMAP_HOLE_TO_SELECTION_SET"
+export type IncomingAction = "PUSH_MODEL_STATE" | "PUSH_TEMPLATES" | "COMPUTING" | "response" | "PUSH_TIMELINE_ITEMS" | "PUSH_TIMELINE_SUMMARY" | "TIMELINE_OPERATION_RESULT" | "HOLE_POSITION_RESULT" | "PREFERENCES_LOADED" | "PREFERENCES_SAVED"
+export type OutgoingAction = "ready" | "GET_MODEL_STATE" | "APPLY_PARAMS" | "cancel" | "OPEN_URL" | "GET_TEMPLATES" | "LOAD_TEMPLATE" | "IMPORT_SHARE" | "SAVE_TEMPLATE" | "DELETE_TEMPLATE" | "OPEN_TEMPLATES_FOLDER" | "GET_TIMELINE_ITEMS" | "GET_TIMELINE_SUMMARY" | "APPLY_TIMELINE_CHANGES" | "SET_PARAM_CATEGORY" | "EDIT_PARAM" | "DELETE_PARAM" | "REMAP_HOLE_TO_SELECTION_SET" | "GET_PREFERENCES" | "SAVE_PREFERENCES"
 
 type MessageHandler = (action: string, dataJson: string) => void
 
@@ -37,6 +37,15 @@ const secondaryHandlers = new Set<MessageHandler>()
 export function addMessageHandler(cb: MessageHandler): () => void {
   secondaryHandlers.add(cb)
   return () => secondaryHandlers.delete(cb)
+}
+
+/** Listen for a specific action from Python. Returns an unsubscribe function. */
+export function onPythonMessage(action: IncomingAction, cb: (data: string) => void): () => void {
+  return addMessageHandler((incomingAction, dataJson) => {
+    if (incomingAction === action) {
+      cb(dataJson)
+    }
+  })
 }
 const _isFusion = () => typeof window.adsk !== "undefined" && !!window.adsk.fusionSendData
 const _isDev = () => window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
