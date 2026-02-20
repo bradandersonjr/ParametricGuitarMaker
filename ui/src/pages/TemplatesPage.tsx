@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { sendToPython } from "@/lib/fusion-bridge"
+import { isMetricUnit } from "@/lib/units"
 import type { GuitarTemplate, TemplateListPayload, ModelPayload } from "@/types"
 import { BookMarked, Trash2, Download, Save, Lock, ChevronDown, ChevronRight, FolderOpen } from "lucide-react"
 
@@ -13,7 +14,7 @@ interface TemplatesPageProps {
 }
 
 function getDisplayParams(params: Record<string, string>, documentUnit?: string) {
-  const isMetric = documentUnit === 'mm'
+  const isMetric = isMetricUnit(documentUnit)
   const keys = ["FretCount", "StringCount", "ScaleLengthBass", "ScaleLengthTreb", "NeutralFret"]
   const labels: Record<string, string> = {
     FretCount: "Frets",

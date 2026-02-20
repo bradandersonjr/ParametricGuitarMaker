@@ -368,6 +368,7 @@ def _build_template_list():
     # Determine the active document's unit system
     design = adsk.fusion.Design.cast(app.activeProduct)
     doc_unit = parameter_bridge.get_document_unit(design) if design else 'in'
+    is_metric = parameter_bridge.is_metric_length_unit(doc_unit)
 
     presets = []
     if os.path.isdir(PRESETS_DIR):
@@ -377,7 +378,7 @@ def _build_template_list():
             data = _load_template_file(os.path.join(PRESETS_DIR, fname))
             if data:
                 # Select description based on document unit
-                if doc_unit == 'mm' and 'description_metric' in data:
+                if is_metric and 'description_metric' in data:
                     description = data.get('description_metric', '')
                 else:
                     description = data.get('description', '')
@@ -400,7 +401,7 @@ def _build_template_list():
         data = _load_template_file(os.path.join(USER_TEMPLATES_DIR, fname))
         if data:
             # Select description based on document unit
-            if doc_unit == 'mm' and 'description_metric' in data:
+            if is_metric and 'description_metric' in data:
                 description = data.get('description_metric', '')
             else:
                 description = data.get('description', '')
@@ -537,7 +538,7 @@ def _build_template_payload(parameters: dict, mode: str, template_name: str = ''
 
     design = adsk.fusion.Design.cast(app.activeProduct)
     doc_unit = parameter_bridge.get_document_unit(design) if design else 'in'
-    is_metric = doc_unit == 'mm'
+    is_metric = parameter_bridge.is_metric_length_unit(doc_unit)
 
     fingerprint = parameter_bridge.get_fingerprint(design) if design else None
 
@@ -846,7 +847,7 @@ def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
     # ── Open template on first apply ─────────────────────────────
     if design.userParameters.count == 0:
         doc_unit = parameter_bridge.get_document_unit(design)
-        template_file = 'fretboard_metric.f3d' if doc_unit == 'mm' else 'fretboard_imperial.f3d'
+        template_file = 'fretboard_metric.f3d' if parameter_bridge.is_metric_length_unit(doc_unit) else 'fretboard_imperial.f3d'
         template_path = os.path.join(TEMPLATES_DIR, template_file)
 
         if not os.path.isfile(template_path):

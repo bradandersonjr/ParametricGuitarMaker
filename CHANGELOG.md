@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved TypeScript compilation with stricter error checking
 
 ### Fixed
-- Removed unused Sheet component imports from TimelinePanel (SheetDescription, SheetHeader, SheetTitle)
+- Removed unused Sheet component imports from OptionsPanel (SheetDescription, SheetHeader, SheetTitle)
 - Removed unused `idx` variable in timeline items mapping
 - Cleanup of build system to ensure proper TypeScript compilation
 

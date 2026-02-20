@@ -22,11 +22,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { sendToPython } from "@/lib/fusion-bridge"
+import { isMetricUnit } from "@/lib/units"
 import type { ModelPayload, ParameterGroup, Parameter, PendingParam } from "@/types"
 import { ChevronDown, ChevronRight, LayoutGrid, X, Search, Undo2, Redo2, Plus, Minus, AlertCircle, RefreshCw, RotateCcw, Check, GripVertical } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { HistoryPopover, IconTooltip } from "@/components/HistoryPopover"
-import { OptionsPanel } from "@/components/TimelinePanel"
+import { OptionsPanel } from "@/components/OptionsPanel"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { usePreferences } from "@/hooks/usePreferences"
 import {
@@ -459,7 +460,7 @@ function ParamInfoModal({
           </p>
         </div>
         {(() => {
-          const isMetric = documentUnit === 'mm' && param.unitKind === 'length'
+          const isMetric = isMetricUnit(documentUnit) && param.unitKind === 'length'
           const displayMin = isMetric ? (param.minMetric ?? param.min) : param.min
           const displayMax = isMetric ? (param.maxMetric ?? param.max) : param.max
           return (displayMin != null || displayMax != null) ? (
@@ -637,8 +638,8 @@ function SchemaParamRow({
     scaleMode === "single" && param.name === "ScaleLengthBass"
       ? "Scale Length"
       : radiusMode === "straight" && param.name === "NutRadius"
-      ? "Fretboard Radius"
-      : param.label
+        ? "Fretboard Radius"
+        : param.label
 
   return (
     <>
@@ -1401,7 +1402,7 @@ export function ParametersPage({
     for (const group of payload.groups) {
       for (const param of group.parameters) {
         // For metric documents, prefer defaultMetric if expression is not available
-        const isMetric = documentUnit === 'mm' && param.unitKind === 'length'
+        const isMetric = isMetricUnit(documentUnit) && param.unitKind === 'length'
         const defaultVal = isMetric && param.defaultMetric ? param.defaultMetric : param.default ?? ""
         const expr = param.expression ?? defaultVal ?? ""
         // If expression is a bare parameter reference (e.g. "ScaleLengthBass"), keep it as-is
@@ -1520,14 +1521,14 @@ export function ParametersPage({
     const isRadiusReference = /^NutRadius$/i.test(heelRadiusExpr.trim())
     const flatValueImperial = "10000"
     const flatValueMetric = "254000"
-    const flatValue = documentUnit === 'mm' ? flatValueMetric : flatValueImperial
+    const flatValue = isMetricUnit(documentUnit) ? flatValueMetric : flatValueImperial
     const isFlatNut = nutRadiusExpr.includes(flatValue)
     const isFlatHeel = heelRadiusExpr.includes(flatValue)
 
     const derivedRadiusMode: "compound" | "straight" | "flat" =
       isFlatNut && isFlatHeel ? "flat" :
-      isRadiusReference ? "straight" :
-      "compound"
+        isRadiusReference ? "straight" :
+          "compound"
 
     setRadiusMode(derivedRadiusMode)
 
@@ -1570,6 +1571,10 @@ export function ParametersPage({
     for (const [name, value] of Object.entries(displayValues)) {
       if (!value) continue // Allow empty strings
 
+      // Skip validation for flat-radius sentinel values (intentionally exceed limits)
+      if (radiusMode === "flat" && (name === "NutRadius" || name === "HeelRadius")) continue
+      if (name === "HeelCurveRadius" && (value.includes("10000") || value.includes("254000"))) continue
+
       const limits = parameterMap[name]
       if (!limits) {
         continue // No limits defined
@@ -1583,7 +1588,7 @@ export function ParametersPage({
       if (isNaN(numValue)) continue
 
       // Use metric limits for mm documents, imperial for others
-      const isLengthInMm = limits.unitKind === 'length' && documentUnit === 'mm'
+      const isLengthInMm = limits.unitKind === 'length' && isMetricUnit(documentUnit)
       const minVal = isLengthInMm ? limits.minMetric : limits.min
       const maxVal = isLengthInMm ? limits.maxMetric : limits.max
 
@@ -1602,7 +1607,7 @@ export function ParametersPage({
     if (Object.keys(newErrors).length === 0) {
       setShowErrorFilter(false)
     }
-  }, [displayValues, parameterMap, documentUnit])
+  }, [displayValues, parameterMap, documentUnit, radiusMode])
 
   const finalDisplayValues = useMemo(() => {
     const next = { ...displayValues }
@@ -1614,13 +1619,8 @@ export function ParametersPage({
       const nutVal = displayValues["NutRadius"] ?? ""
       next["HeelRadius"] = nutVal
     }
-    if (radiusMode === "flat") {
-      const flatValue = documentUnit === "mm" ? "254000" : "10000"
-      next["NutRadius"] = flatValue
-      next["HeelRadius"] = flatValue
-    }
     return next
-  }, [displayValues, scaleMode, radiusMode, documentUnit])
+  }, [displayValues, scaleMode, radiusMode])
 
   const modifiedCount = payload
     ? Object.entries(finalDisplayValues).filter(([name, val]) => {
@@ -1630,10 +1630,9 @@ export function ParametersPage({
     : 0
 
   const scaleModeChanged = scaleMode !== originalScaleMode
-  const radiusModeFlatChanged = radiusMode === "flat" && originalRadiusMode !== "flat"
-  const totalChangeCount = modifiedCount + (radiusModeFlatChanged ? 1 : 0) + pendingParams.length
-  const initialChangeCount = isInitial ? totalChangeCount : 0
-  const hasChanges = modifiedCount > 0 || radiusModeFlatChanged
+  const radiusModeChanged = radiusMode !== originalRadiusMode
+  const initialChangeCount = isInitial ? (modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeChanged ? 1 : 0)) : 0
+  const hasChanges = modifiedCount > 0 || scaleModeChanged || radiusModeChanged
   const hasPending = pendingParams.length > 0
   const canUndo = historyIndex >= 0
   const canRedo = historyIndex < history.length - 1
@@ -1860,7 +1859,7 @@ export function ParametersPage({
               <SelectTrigger
                 className={[
                   "w-[140px] h-8 text-xs",
-                  scaleMode !== originalScaleMode ? "ring-2 ring-amber-400" : "",
+                  scaleMode !== originalScaleMode ? "ring-2 ring-amber-400 focus:ring-2 focus:ring-amber-400" : "",
                 ].join(" ")}
               >
                 <SelectValue />
@@ -1888,7 +1887,7 @@ export function ParametersPage({
               <SelectTrigger
                 className={[
                   "w-[120px] h-8 text-xs",
-                  radiusMode !== originalRadiusMode ? "ring-2 ring-amber-400" : "",
+                  radiusMode !== originalRadiusMode ? "ring-2 ring-amber-400 focus:ring-2 focus:ring-amber-400" : "",
                 ].join(" ")}
               >
                 <SelectValue />
@@ -1903,7 +1902,18 @@ export function ParametersPage({
 
           {!isInitial && (
             <div className="ml-auto">
-              <OptionsPanel isOpen={timelineSheetOpen} onOpenChange={setTimelineSheetOpen} />
+              <OptionsPanel
+                isOpen={timelineSheetOpen}
+                onOpenChange={setTimelineSheetOpen}
+                onHeelCurveToggle={(enabled: boolean) => {
+                  const flatValue = isMetricUnit(documentUnit) ? '254000 mm' : '10000 in'
+                  const defaultValue = isMetricUnit(documentUnit) ? '102 mm' : '4 in'
+                  setDisplayValues(prev => ({
+                    ...prev,
+                    HeelCurveRadius: enabled ? (originalExpressions["HeelCurveRadius"] || defaultValue) : flatValue,
+                  }))
+                }}
+              />
             </div>
           )}
         </div>
@@ -2171,8 +2181,9 @@ export function ParametersPage({
                 groupId: p.groupId,
               }))
 
-              // Apply radius mode change first if changed to flat (only in live mode)
-              if (radiusModeFlatChanged && !isInitial) {
+              // Apply radius mode change first if changed
+              // But ONLY in Live Mode - Initial Mode has no parameters to modify yet
+              if (radiusModeChanged && !isInitial) {
                 sendToPython("SET_RADIUS_MODE", { mode: radiusMode })
                 // Small delay to let radius mode apply before parameters
                 setTimeout(() => {
@@ -2192,6 +2203,27 @@ export function ParametersPage({
                       changedParams[name] = buildExpression(name, displayVal)
                     }
                   }
+
+                  // In Initial Mode, apply radius mode by setting parameter values directly
+                  if (radiusModeChanged) {
+                    const flatValue = isMetricUnit(payload?.documentUnit) ? '254000 mm' : '10000 in'
+                    if (radiusMode === 'flat') {
+                      changedParams['NutRadius'] = flatValue
+                      changedParams['HeelRadius'] = flatValue
+                    } else if (radiusMode === 'straight') {
+                      // HeelRadius will reference NutRadius
+                      changedParams['HeelRadius'] = 'NutRadius'
+                    } else if (radiusMode === 'compound') {
+                      // Ensure both have independent values (use template defaults if not changed)
+                      if (!changedParams['NutRadius']) {
+                        changedParams['NutRadius'] = originalExpressions['NutRadius'] || ''
+                      }
+                      if (!changedParams['HeelRadius']) {
+                        changedParams['HeelRadius'] = originalExpressions['HeelRadius'] || ''
+                      }
+                    }
+                  }
+
                   setHistory([])
                   setHistoryIndex(-1)
                   sendToPython("APPLY_PARAMS", { updates: changedParams, creates })
@@ -2216,9 +2248,9 @@ export function ParametersPage({
               : isInitial
                 ? initialChangeCount > 0
                   ? `Import & Apply ${initialChangeCount} change${initialChangeCount !== 1 ? "s" : ""}`
-                  : "Import & Apply"
+                  : "Quick Load Default"
                 : hasChanges || hasPending
-                  ? `Apply ${totalChangeCount} change${totalChangeCount !== 1 ? "s" : ""}${hasPending ? ` (${pendingParams.length} new)` : ""}`
+                  ? `Apply ${modifiedCount + pendingParams.length} change${(modifiedCount + pendingParams.length) !== 1 ? "s" : ""}${hasPending ? ` (${pendingParams.length} new)` : ""}`
                   : "Apply to Model"}
           </Button>
 

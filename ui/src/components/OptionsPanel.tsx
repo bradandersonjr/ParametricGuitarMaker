@@ -24,17 +24,19 @@ import {
 interface OptionsPanelProps {
     isOpen?: boolean
     onOpenChange?: (open: boolean) => void
+    onHeelCurveToggle?: (enabled: boolean) => void
 }
 
 // ── Toggle items config ─────────────────────────────────────────────
 //
-// Each entry describes one group toggle shown in the Options drawer.
+// Each entry describes one timeline toggle shown in the Options drawer.
 // Add new toggles here — no other code changes needed.
 
 const TOGGLE_ITEMS = [
-    { groupName: "Fret Slot Cuts", label: "Fret Slot Cuts" },
-    { groupName: "Nut Slot",       label: "Nut Slot" },
-    { groupName: "Fret Markers",   label: "Fret Markers" },
+    { name: "Fret Slot Cuts", label: "Fret Slot Cuts", type: "Group" },
+    { name: "Nut Slot", label: "Nut Slot", type: "Group" },
+    { name: "Fret Markers", label: "Fret Markers", type: "Group" },
+    { name: "Heel Curve Fillet", label: "Heel Curve Fillet", type: "Feature" },
 ] as const
 
 // ── Action buttons config ─────────────────────────────────────────────────────
@@ -78,33 +80,6 @@ const ACTION_BUTTONS = [
         states: [{ label: "Off" }, { label: "On" }],
     },
     {
-        id: "radiusCompound",
-        icon: <Circle size={13} />,
-        label: () => "Compound Radius",
-        fusionAction: "SET_RADIUS_MODE",
-        buildPayload: (_nextIndex: number, _currentIndex: number) => ({ mode: "compound" }),
-        resultAction: "RADIUS_MODE_RESULT",
-        states: [{ label: "Compound" }],
-    },
-    {
-        id: "radiusStraight",
-        icon: <Circle size={13} />,
-        label: () => "Straight Radius",
-        fusionAction: "SET_RADIUS_MODE",
-        buildPayload: (_nextIndex: number, _currentIndex: number) => ({ mode: "straight" }),
-        resultAction: "RADIUS_MODE_RESULT",
-        states: [{ label: "Straight" }],
-    },
-    {
-        id: "radiusFlat",
-        icon: <Circle size={13} />,
-        label: () => "Flat Radius",
-        fusionAction: "SET_RADIUS_MODE",
-        buildPayload: (_nextIndex: number, _currentIndex: number) => ({ mode: "flat" }),
-        resultAction: "RADIUS_MODE_RESULT",
-        states: [{ label: "Flat" }],
-    },
-    {
         id: "heelCurve",
         icon: <Circle size={13} />,
         label: (i: number) => `Heel Curve: ${["Off", "On"][i]}`,
@@ -119,7 +94,7 @@ const ACTION_BUTTONS = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function OptionsPanel({ isOpen: controlledOpen, onOpenChange }: OptionsPanelProps) {
+export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurveToggle: _onHeelCurveToggle }: OptionsPanelProps) {
     const [groupStates, setGroupStates] = useState<Record<string, boolean>>({})
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -199,10 +174,11 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange }: OptionsPa
 
     // ── Handlers ──
 
-    const handleToggle = (groupName: string) => {
-        // Find the actual key in groupStates that matches this group prefix
+    const handleToggle = (item: typeof TOGGLE_ITEMS[number]) => {
+        // Find the actual key in groupStates that matches this timeline item prefix
+        const itemName = item.name
         const key = Object.keys(groupStates).find(
-            k => k === groupName || k.startsWith(groupName + ':')
+            k => k === itemName || k.startsWith(itemName + ':')
         )
         if (!key) return
 
@@ -213,10 +189,10 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange }: OptionsPa
 
         // When toggling Fret Slot Cuts and Zero Fret is enabled, also toggle Zero Fret Slot Cut with the same state
         const changes: Array<{ name: string; type: string; suppressed: boolean }> = [
-            { name: key, type: "Group", suppressed: newSuppressedState }
+            { name: key, type: item.type, suppressed: newSuppressedState }
         ]
 
-        if (groupName === "Fret Slot Cuts" && (actionIndex['zeroFret'] ?? 0) === 1) {
+        if (itemName === "Fret Slot Cuts" && (actionIndex['zeroFret'] ?? 0) === 1) {
             const zeroFretSlotCutKey = Object.keys(groupStates).find(
                 k => k === "Zero Fret Slot Cut" || k.startsWith("Zero Fret Slot Cut" + ':')
             )
@@ -296,13 +272,13 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange }: OptionsPa
                     </div>
                 ) : (
                     TOGGLE_ITEMS.map(item => {
-                        const { key, suppressed } = resolveGroupState(item.groupName)
+                        const { key, suppressed } = resolveGroupState(item.name)
                         const isApplying = key ? applyingGroups.has(key) : false
                         const isActive = key ? !suppressed : false
 
                         return (
                             <div
-                                key={item.groupName}
+                                key={item.name}
                                 className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/40 transition-colors"
                             >
                                 <span className={[
@@ -312,7 +288,7 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange }: OptionsPa
                                     {item.label}
                                 </span>
                                 <button
-                                    onClick={() => handleToggle(item.groupName)}
+                                    onClick={() => handleToggle(item)}
                                     disabled={isApplying || !key}
                                     className={[
                                         "flex items-center justify-center rounded-md transition-all duration-200 shrink-0 w-8 h-7",

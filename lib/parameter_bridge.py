@@ -33,6 +33,9 @@ UNIT_SYMBOLS = {
     'unitless': '',
 }
 
+METRIC_LENGTH_UNITS = {'nm', 'um', 'mm', 'cm', 'm', 'km'}
+IMPERIAL_LENGTH_UNITS = {'mil', 'in', 'ft', 'yd', 'mi', 'ftin', 'ftandin'}
+
 
 def get_unit_symbol(unit_kind, doc_unit='in'):
     """Convert unitKind to a display unit symbol.
@@ -50,21 +53,48 @@ def get_unit_symbol(unit_kind, doc_unit='in'):
 
 
 def get_document_unit(design: adsk.fusion.Design) -> str:
-    """Return the document's active length unit symbol (e.g. 'in', 'mm', 'cm').
+    """Return the app-standard length unit for the document ('in' or 'mm').
 
     Args:
         design: The active Fusion design.
 
     Returns:
-        str: The length unit symbol used by the document.
+        str: 'mm' for any metric Fusion length unit, otherwise 'in'.
     """
     try:
         units_mgr = design.fusionUnitsManager
-        unit = units_mgr.defaultLengthUnits
-        return unit
+        raw_unit = units_mgr.defaultLengthUnits
+        return 'mm' if is_metric_length_unit(raw_unit) else 'in'
     except Exception as e:
         futil.log(f'get_document_unit: FAILED ({e}), falling back to "in"')
         return 'in'
+
+
+def is_metric_length_unit(doc_unit: str) -> bool:
+    """Return True if a Fusion length unit should be treated as metric."""
+    unit = (doc_unit or '').strip().lower()
+    if not unit:
+        return False
+
+    # Normalize variants like "ft and in" / "ft-in" / "millimeter".
+    normalized = re.sub(r'[^a-z]', '', unit)
+
+    if normalized in METRIC_LENGTH_UNITS:
+        return True
+    if normalized in IMPERIAL_LENGTH_UNITS:
+        return False
+
+    # Heuristics for long-form names.
+    if any(token in normalized for token in ('meter', 'metre', 'millimeter', 'centimeter', 'kilometer', 'micrometer', 'nanometer')):
+        return True
+    if any(token in normalized for token in ('inch', 'foot', 'feet', 'yard', 'mile', 'thou')):
+        return False
+
+    futil.log(
+        f'is_metric_length_unit: Unknown doc unit "{doc_unit}", defaulting to imperial handling',
+        adsk.core.LogLevels.WarningLogLevel
+    )
+    return False
 
 
 def load_schema():
@@ -387,7 +417,7 @@ def build_schema_payload(design: adsk.fusion.Design = None):
 
             # If document is metric and parameter is a length, use hand-authored
             # metric default from the schema instead of runtime conversion
-            if doc_unit == 'mm' and param['unitKind'] == 'length' and param.get('defaultMetric'):
+            if is_metric_length_unit(doc_unit) and param['unitKind'] == 'length' and param.get('defaultMetric'):
                 metric_default = param['defaultMetric']
                 try:
                     param['value'] = float(metric_default)
@@ -530,7 +560,7 @@ def build_ui_payload(design: adsk.fusion.Design):
             param['unit'] = get_unit_symbol(param['unitKind'], doc_unit)
 
             # If document is metric and parameter is a length, convert expression from inches to mm
-            if doc_unit == 'mm' and param['unitKind'] == 'length':
+            if is_metric_length_unit(doc_unit) and param['unitKind'] == 'length':
                 expr = param['expression']
                 match = re.match(r'^([\d.]+)\s*in\s*$', expr)
                 if match:
@@ -683,8 +713,8 @@ def _validate_parameter_value(name: str, expression_str: str, limits: dict, doc_
     limit = limits[name]
     unit_kind = limit.get('unitKind', 'unitless')
 
-    # Use metric limits for mm documents, imperial limits for others
-    if doc_unit == 'mm' and unit_kind == 'length':
+    # Use metric limits for metric documents, imperial limits for others
+    if is_metric_length_unit(doc_unit) and unit_kind == 'length':
         min_val = limit.get('minMetric')
         max_val = limit.get('maxMetric')
         min_imperial = limit.get('min')
@@ -818,8 +848,11 @@ def apply_parameters(design: adsk.fusion.Design, param_values: dict, creates: li
             )
             continue
 
+        # Skip validation for flat-radius sentinel values (these intentionally exceed normal limits)
+        is_flat_sentinel = new_expr in ('10000 in', '254000 mm')
+
         # Validate against schema limits
-        validation_error = _validate_parameter_value(name, new_expr, limits, doc_unit)
+        validation_error = None if is_flat_sentinel else _validate_parameter_value(name, new_expr, limits, doc_unit)
         if validation_error:
             out_of_range += 1
             errors.append(validation_error)
@@ -872,9 +905,12 @@ def apply_parameters(design: adsk.fusion.Design, param_values: dict, creates: li
 # Timeline Management (delegates to timeline_manager)
 # ═══════════════════════════════════════════════════════════════════
 
-# Timeline groups surfaced in the Features Drawer.
+# Timeline groups surfaced in the Options Drawer.
 # Matched by prefix so "Fret Markers" matches "Fret Markers:1" etc.
 _FEATURES_DRAWER_GROUPS = ["Fret Markers", "Nut Slot", "Fret Slot Cuts", "Zero Fret Slot Cut"]
+
+# Individual timeline features surfaced in the Options Drawer.
+_FEATURES_DRAWER_FEATURES = ["Heel Curve Fillet"]
 
 
 def _matches_drawer_group(name: str) -> bool:
@@ -886,17 +922,27 @@ def _matches_drawer_group(name: str) -> bool:
     return False
 
 
+def _matches_drawer_feature(name: str) -> bool:
+    """Return True if the item name (stripped) matches any allowed feature prefix."""
+    stripped = name.strip()
+    for feat in _FEATURES_DRAWER_FEATURES:
+        if stripped == feat or stripped.startswith(feat + ':'):
+            return True
+    return False
+
+
 def get_group_states(design: adsk.fusion.Design) -> list:
-    """Get the suppression state of each curated Options-panel group.
+    """Get the suppression state of each curated Options-panel item.
 
     Returns a list of ``{name, suppressed}`` dicts — one per matching
-    timeline group in ``_FEATURES_DRAWER_GROUPS``.
+    timeline group or feature.
     """
     items = timeline_manager.get_all_items(design, include_suppressed=True)
     return [
         {'name': item['name'].strip(), 'suppressed': item['suppressed']}
         for item in items
-        if item['type'] == 'Group' and _matches_drawer_group(item['name'])
+        if (item['type'] == 'Group' and _matches_drawer_group(item['name']))
+        or (item['type'] == 'Feature' and _matches_drawer_feature(item['name']))
     ]
 
 
@@ -1426,7 +1472,7 @@ def set_radius_mode(design: adsk.fusion.Design, mode_data: dict) -> dict:
 
         if mode == 'flat':
             # Set both to 10000 (with appropriate unit)
-            flat_expr = '10000 in' if doc_unit == 'in' else '254000 mm'
+            flat_expr = '254000 mm' if is_metric_length_unit(doc_unit) else '10000 in'
             nut_radius.expression = flat_expr
             heel_radius.expression = flat_expr
             futil.log(
