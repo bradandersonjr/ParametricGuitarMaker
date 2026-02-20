@@ -1,7 +1,7 @@
 Name,Unit,Expression,Value,Comments,Favorite
 FretCount,,24,24,The total number of frets,false
 StringCount,,6,6,The total number of strings,false
-NeutralFret,,9,9,The fret which is perpendicular to the fretboard's centerline when scale lengths aren't equal,false
+NeutralFret,,9,9,"The fret which is perpendicular to the fretboard's centerline when scale lengths aren't equal",false
 ScaleLengthBass,mm,648 mm,648,Scale length for the top-most string of a multiscale guitar,false
 ScaleLengthTreb,mm,629 mm,629,Scale length for the bottom-most string of a multiscale guitar,false
 GuitarLength,mm,972 mm,972,Overall length of the guitar-- along the X-xis,false
@@ -13,13 +13,13 @@ BodyHeight,mm,38 mm,38,Overall thickness of the guitar body-- along the Z-axis,f
 HeadstockLength,mm,162 mm,162,Overall length of the headstock-- along the X-axis,false
 HeadstockWidth,mm,62 mm,62,Overall width of the headstock-- along the Y-axis,false
 HeadstockHeight,mm,14.3 mm,14.3,Overall thickness of the headstock-- along the Z-axis,false
-FretThickness1,mm,17.5 mm,17.5,Overall thickness of the neck at the 1st fret's position- including the fretboard thickness,false
-FretThickness12,mm,20.6 mm,20.6,Overall thickness of the neck at the 12th fret's position- including the fretboard thickness,false
+FretThickness1,mm,17.5 mm,17.5,"Overall thickness of the neck at the 1st fret's position- including the fretboard thickness",false
+FretThickness12,mm,20.6 mm,20.6,"Overall thickness of the neck at the 12th fret's position- including the fretboard thickness",false
 FretboardThickness,mm,4.8 mm,4.8,Overall thickness of the fretboard-- along the Z-axis,false
 HeelExtension,mm,9.5 mm,9.5,Length of the material beyond of the final fret of the fretboard toward the bridge,false
 FretboardExtension,mm,9.5 mm,9.5,Length of the material forward of the nut-edge of the fretboard toward the headstock,false
-FretboardLengthBass,mm,ScaleLengthBass * ( 1 - 1 / 2 ^ ( FretCount / 12 ) ),486,This draws the length of the fretboard's bass-edge so that the heel will be neutral with the final fret,false
-FretboardLengthTreb,mm,ScaleLengthTreb * ( 1 - 1 / 2 ^ ( FretCount / 12 ) ),471,This draws the length of the fretboard's treble-edge so that the heel will be neutral with the final fret,false
+FretboardLengthBass,mm,ScaleLengthBass * ( 1 - 1 / 2 ^ ( FretCount / 12 ) ),486,"This draws the length of the fretboard's bass-edge so that the heel will be neutral with the final fret",false
+FretboardLengthTreb,mm,ScaleLengthTreb * ( 1 - 1 / 2 ^ ( FretCount / 12 ) ),471,"This draws the length of the fretboard's treble-edge so that the heel will be neutral with the final fret",false
 FretboardLengthBassRND,mm,( round(FretboardLengthBass * 8) / 8 ) + HeelExtension,495,"This rounds the overall vertical length of the fretboard's bass-edge to the nearest 1/8""",false
 FretboardLengthTrebRND,mm,( round(FretboardLengthTreb * 8) / 8 ) + HeelExtension,483,"This rounds the overall vertical length of the fretboard's treble-edge to the nearest 1/8""",false
 FretSpacingBass,mm,if(( ScaleLengthBass == ScaleLengthTreb ); sqrt(( BridgeSpacing - NutSpacing ) ^ 2 / 4 + ScaleLengthBass ^ 2) * ( 1 - 1 / 2 ^ ( 1 / 12 ) ); ScaleLengthBass * ( 1 - 1 / 2 ^ ( 1 / 12 ) )),36.4,"The distance between the nut and the 1st fret intersection along the top-most string using ""on-center"" measurement. The length adjusts based on if the scale length is single or multi and accounts for the subtle difference between the two.",false
@@ -46,7 +46,7 @@ ZeroFretCrownHeight,mm,1.0 mm,1.0,Height of the crown of the zero fret,false
 ZeroFretAdjust,mm,FretCrownWidth * 0,0,Adjustment at the nut-edge of the fretboard for a Zero Fret,false
 NutRadius,mm,254 mm,254,Radius of the fretboard at the nut,false
 HeelRadius,mm,406 mm,406,Radius of the fretboard at the heel,false
-HeelCurveRadius,mm,102 mm,102,Radius of the fretboard heel-edge curve,false
+HeelCurveRadius,mm,203 mm,203,Radius of the fretboard heel-edge curve,false
 HeelFillet,mm,4.8 mm,4.8,Fillet radius for the fretboard heeledge corners,false
 BlindFret,mm,1.6 mm,1.6,The distance from the edge of the fretboard to the end of the hidden tang,false
 BlindNut,mm,1.6 mm,1.6,The distance from the edge of the fretboard to the end of the hidden tang,false
@@ -63,15 +63,13 @@ FretScallopFillet,mm,3.2 mm,3.2,This fillet is used to help blend the scallop in
 FallAwayFret,,14,14,At which fret the fallaway taper begings,false
 FallAwayLength,mm,ScaleLengthTreb * ( 1 - 1 / 2 ^ ( FallAwayFret / 12 ) ),348,The distance from the nut for the starting point of the falloff curve,false
 FallAwayDepth,mm,FretboardThickness - 0.0625 mm,3.2,The depth from the fretboard height at the heel-end which the taper terminates,false
-StringGauge1,mm,0.28 mm,0.28,In standard tuning- typically your ' e ' string,false
-StringGauge2,mm,0.36 mm,0.36,In standard tuning- typically your ' B ' string,false
-StringGauge3,mm,0.46 mm,0.46,In standard tuning- typically your ' G ' string,false
-StringGauge4,mm,0.71 mm,0.71,In standard tuning- typically your ' D ' string,false
-StringGauge5,mm,0.97 mm,0.97,In standard tuning- typically your ' A ' string,false
-StringGauge6,mm,1.24 mm,1.24,In standard tuning- typically your ' E ' string,false
+StringGauge1,mm,0.28 mm,0.28,"In standard tuning- typically your ' e ' string",false
+StringGauge2,mm,0.36 mm,0.36,"In standard tuning- typically your ' B ' string",false
+StringGauge3,mm,0.46 mm,0.46,"In standard tuning- typically your ' G ' string",false
+StringGauge4,mm,0.71 mm,0.71,"In standard tuning- typically your ' D ' string",false
+StringGauge5,mm,0.97 mm,0.97,"In standard tuning- typically your ' A ' string",false
+StringGauge6,mm,1.24 mm,1.24,"In standard tuning- typically your ' E ' string",false
 StringGauge7,mm,0 mm,0,Reserved for 7-string guitar,false
 StringGauge8,mm,0 mm,0,Reserved for 8-string guitar,false
 StringAction,mm,1.6 mm,1.6,The clearance between the bottom of strings and the crown of the frets,false
 StringEquispacing,mm,( NutSpacing - StringGauge1 - StringGauge2 - StringGauge3 - StringGauge4 - StringGauge5 - StringGauge6 - StringGauge7 - StringGauge8 ) / StringCount,5.2,The equal distance between each string,false
-HeelTransition,mm,( ( ScaleLengthBass + ScaleLengthTreb ) / 2 ) * ( 1 - 1 / ( 2 ^ ( HeelTransitionFret / 12 ) ) ),399,,false
-HeelTransitionFret,,17,17,,false
