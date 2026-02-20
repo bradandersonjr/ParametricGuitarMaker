@@ -1626,9 +1626,10 @@ export function ParametersPage({
 
   const scaleModeChanged = scaleMode !== originalScaleMode
   const radiusModeChanged = radiusMode !== originalRadiusMode
-  const totalChangeCount = modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeChanged ? 1 : 0) + pendingParams.length
+  const radiusModeFlatChanged = radiusMode === "flat" && originalRadiusMode !== "flat"
+  const totalChangeCount = modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeFlatChanged ? 1 : 0) + pendingParams.length
   const initialChangeCount = isInitial ? totalChangeCount : 0
-  const hasChanges = modifiedCount > 0 || scaleModeChanged || radiusModeChanged
+  const hasChanges = modifiedCount > 0 || scaleModeChanged || radiusModeFlatChanged
   const hasPending = pendingParams.length > 0
   const canUndo = historyIndex >= 0
   const canRedo = historyIndex < history.length - 1
@@ -2166,8 +2167,8 @@ export function ParametersPage({
                 groupId: p.groupId,
               }))
 
-              // Apply radius mode change first if changed
-              if (radiusModeChanged) {
+              // Apply radius mode change first if changed to flat
+              if (radiusModeFlatChanged) {
                 sendToPython("SET_RADIUS_MODE", { mode: radiusMode })
                 // Small delay to let radius mode apply before parameters
                 setTimeout(() => {
