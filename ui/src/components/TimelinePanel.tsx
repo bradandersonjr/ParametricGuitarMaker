@@ -35,10 +35,10 @@ import {
     Axis3D,
     Dot,
     Waves,
-    Crosshair,
+    ArrowLeftRight,
 } from "lucide-react"
 
-interface TimelinePanelProps {
+interface OptionsPanelProps {
     isOpen?: boolean
     onOpenChange?: (open: boolean) => void
 }
@@ -48,33 +48,33 @@ interface TimelinePanelProps {
 type FeatureIconDef = { icon: React.ReactNode; color: string }
 
 const FEATURE_TYPE_ICONS: Record<string, FeatureIconDef> = {
-    Sketch:    { icon: <PencilLine size={12} />,    color: "text-violet-500" },
-    Extrude:   { icon: <CuboidIcon size={12} />,    color: "text-blue-500" },
-    Revolve:   { icon: <RotateCcw size={12} />,     color: "text-blue-400" },
-    Sweep:     { icon: <Spline size={12} />,         color: "text-cyan-500" },
-    Loft:      { icon: <Waves size={12} />,          color: "text-cyan-400" },
-    Hole:      { icon: <Drill size={12} />,          color: "text-orange-500" },
-    Thread:    { icon: <Wrench size={12} />,         color: "text-orange-400" },
-    Fillet:    { icon: <Minus size={12} />,          color: "text-emerald-500" },
-    Chamfer:   { icon: <Slice size={12} />,          color: "text-emerald-400" },
-    Shell:     { icon: <Box size={12} />,            color: "text-teal-500" },
-    Pattern:   { icon: <Copy size={12} />,           color: "text-pink-500" },
-    Mirror:    { icon: <SquareDashed size={12} />,   color: "text-pink-400" },
-    Combine:   { icon: <Layers size={12} />,         color: "text-indigo-500" },
-    Split:     { icon: <Slice size={12} />,          color: "text-red-400" },
-    Offset:    { icon: <CuboidIcon size={12} />,     color: "text-blue-300" },
-    Move:      { icon: <Box size={12} />,            color: "text-slate-400" },
-    Surface:   { icon: <Waves size={12} />,          color: "text-sky-400" },
-    Plane:     { icon: <SquareDashed size={12} />,   color: "text-amber-500" },
-    Axis:      { icon: <Axis3D size={12} />,         color: "text-amber-400" },
-    Point:     { icon: <Dot size={12} />,            color: "text-amber-300" },
-    Body:      { icon: <CuboidIcon size={12} />,     color: "text-slate-500" },
-    Form:      { icon: <Waves size={12} />,          color: "text-purple-400" },
-    Fill:      { icon: <Box size={12} />,            color: "text-teal-400" },
-    Edit:      { icon: <Wrench size={12} />,         color: "text-gray-400" },
-    Thicken:   { icon: <Layers size={12} />,         color: "text-sky-500" },
-    Scale:     { icon: <CuboidIcon size={12} />,     color: "text-blue-200" },
-    Feature:   { icon: <Box size={12} />,            color: "text-muted-foreground/60" },
+    Sketch: { icon: <PencilLine size={12} />, color: "text-violet-500" },
+    Extrude: { icon: <CuboidIcon size={12} />, color: "text-blue-500" },
+    Revolve: { icon: <RotateCcw size={12} />, color: "text-blue-400" },
+    Sweep: { icon: <Spline size={12} />, color: "text-cyan-500" },
+    Loft: { icon: <Waves size={12} />, color: "text-cyan-400" },
+    Hole: { icon: <Drill size={12} />, color: "text-orange-500" },
+    Thread: { icon: <Wrench size={12} />, color: "text-orange-400" },
+    Fillet: { icon: <Minus size={12} />, color: "text-emerald-500" },
+    Chamfer: { icon: <Slice size={12} />, color: "text-emerald-400" },
+    Shell: { icon: <Box size={12} />, color: "text-teal-500" },
+    Pattern: { icon: <Copy size={12} />, color: "text-pink-500" },
+    Mirror: { icon: <SquareDashed size={12} />, color: "text-pink-400" },
+    Combine: { icon: <Layers size={12} />, color: "text-indigo-500" },
+    Split: { icon: <Slice size={12} />, color: "text-red-400" },
+    Offset: { icon: <CuboidIcon size={12} />, color: "text-blue-300" },
+    Move: { icon: <Box size={12} />, color: "text-slate-400" },
+    Surface: { icon: <Waves size={12} />, color: "text-sky-400" },
+    Plane: { icon: <SquareDashed size={12} />, color: "text-amber-500" },
+    Axis: { icon: <Axis3D size={12} />, color: "text-amber-400" },
+    Point: { icon: <Dot size={12} />, color: "text-amber-300" },
+    Body: { icon: <CuboidIcon size={12} />, color: "text-slate-500" },
+    Form: { icon: <Waves size={12} />, color: "text-purple-400" },
+    Fill: { icon: <Box size={12} />, color: "text-teal-400" },
+    Edit: { icon: <Wrench size={12} />, color: "text-gray-400" },
+    Thicken: { icon: <Layers size={12} />, color: "text-sky-500" },
+    Scale: { icon: <CuboidIcon size={12} />, color: "text-blue-200" },
+    Feature: { icon: <Box size={12} />, color: "text-muted-foreground/60" },
 }
 
 function getFeatureIconDef(featureType?: string | null): FeatureIconDef {
@@ -82,9 +82,49 @@ function getFeatureIconDef(featureType?: string | null): FeatureIconDef {
     return FEATURE_TYPE_ICONS[featureType] ?? FEATURE_TYPE_ICONS.Feature
 }
 
+// ── Action buttons config ─────────────────────────────────────────────────────
+//
+// Each entry describes one button shown in the Options drawer footer area.
+// Add new buttons here — no changes needed elsewhere in this file.
+//
+// type ActionButton = {
+//   id: string                          — unique key, used for loading state
+//   icon: React.ReactNode               — icon shown in button
+//   label: (activeIndex: number) => string  — dynamic label
+//   fusionAction: string                — message sent to Python
+//   buildPayload: (activeIndex: number) => object  — data sent with message
+//   resultAction: string                — Python response message to listen for
+//   states: { label: string }[]        — the toggle states (min 2)
+// }
+
+const ACTION_BUTTONS = [
+    {
+        id: "markerStyle",
+        icon: <ArrowLeftRight size={13} />,
+        label: (i: number) => `Markers: ${["Circles", "Offset"][i]}`,
+        fusionAction: "REMAP_HOLE_TO_SELECTION_SET",
+        buildPayload: (nextIndex: number) => ({
+            holeName: "Markers Top - Circles",
+            selectionSetName: ["Markers Top - Circles", "Markers Top - Offset"][nextIndex],
+        }),
+        resultAction: "HOLE_POSITION_RESULT",
+        states: [{ label: "Circles" }, { label: "Offset" }],
+    },
+    // Add more action buttons here:
+    // {
+    //   id: "myAction",
+    //   icon: <SomeIcon size={13} />,
+    //   label: (i) => `My Action: ${["State A", "State B"][i]}`,
+    //   fusionAction: "MY_FUSION_ACTION",
+    //   buildPayload: (nextIndex) => ({ someKey: nextIndex }),
+    //   resultAction: "MY_RESULT_ACTION",
+    //   states: [{ label: "State A" }, { label: "State B" }],
+    // },
+] as const
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: TimelinePanelProps) {
+export function OptionsPanel({ isOpen: controlledOpen, onOpenChange }: OptionsPanelProps) {
     const [items, setItems] = useState<TimelineItem[]>([])
     const [summary, setSummary] = useState<TimelineSummary | null>(null)
     const [loading, setLoading] = useState(false)
@@ -96,7 +136,11 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
     // Search / state filter
     const [searchQuery, setSearchQuery] = useState("")
     const [stateFilter, setStateFilter] = useState<"all" | "active" | "suppressed">("all")
-    const [remapLoading, setRemapLoading] = useState(false)
+    // Action button state — keyed by action id
+    const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
+    const [actionIndex, setActionIndex] = useState<Record<string, number>>(
+        () => Object.fromEntries(ACTION_BUTTONS.map(a => [a.id, 0]))
+    )
 
     const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -120,14 +164,19 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
         sendToPython("GET_TIMELINE_SUMMARY", {})
     }, [])
 
+    const actionResultActions = useMemo(
+        () => new Set<string>(ACTION_BUTTONS.map(a => a.resultAction)),
+        []
+    )
+
     useEffect(() => {
         return addMessageHandler((action: string, dataJson: string) => {
-            if (
-                action !== "PUSH_TIMELINE_ITEMS" &&
-                action !== "PUSH_TIMELINE_SUMMARY" &&
-                action !== "TIMELINE_OPERATION_RESULT" &&
-                action !== "HOLE_POSITION_RESULT"
-            ) return
+            const isKnown =
+                action === "PUSH_TIMELINE_ITEMS" ||
+                action === "PUSH_TIMELINE_SUMMARY" ||
+                action === "TIMELINE_OPERATION_RESULT" ||
+                actionResultActions.has(action)
+            if (!isKnown) return
             try {
                 const data = JSON.parse(dataJson)
                 if (action === "PUSH_TIMELINE_ITEMS") {
@@ -142,18 +191,20 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                     }
                     setApplyingItems(new Set())
                     setTimeout(() => refreshTimeline(), 150)
-                } else if (action === "HOLE_POSITION_RESULT") {
-                    setRemapLoading(false)
+                } else if (actionResultActions.has(action)) {
+                    // Clear loading for whichever action produced this result
+                    const btn = ACTION_BUTTONS.find(a => a.resultAction === action)
+                    if (btn) setActionLoading(prev => ({ ...prev, [btn.id]: false }))
                     if (!data.success) {
-                        setError(data.message || "Remap failed")
+                        setError(data.message || "Action failed")
                         setTimeout(() => setError(null), 4000)
                     }
                 }
             } catch (e) {
-                console.error("Timeline message parse error:", e)
+                console.error("Options message parse error:", e)
             }
         })
-    }, [refreshTimeline])
+    }, [refreshTimeline, actionResultActions])
 
     useEffect(() => {
         if (isOpen) refreshTimeline()
@@ -199,6 +250,14 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
         items.forEach(collect)
         if (changes.length === 0) { setLoading(false); return }
         sendToPython("APPLY_TIMELINE_CHANGES", { changes })
+    }
+
+    const handleActionButton = (btn: typeof ACTION_BUTTONS[number]) => {
+        const current = actionIndex[btn.id] ?? 0
+        const next = (current + 1) % btn.states.length
+        setActionIndex(prev => ({ ...prev, [btn.id]: next }))
+        setActionLoading(prev => ({ ...prev, [btn.id]: true }))
+        sendToPython(btn.fusionAction, btn.buildPayload(next))
     }
 
     // ── Derived data ──
@@ -304,31 +363,6 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                             <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0 font-medium">
                                 {children.length}
                             </span>
-                            {(item.name === "Fret Markers" || item.name.startsWith("Fret Markers:")) && (
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation()
-                                        setRemapLoading(true)
-                                        sendToPython("REMAP_HOLE_TO_SELECTION_SET", {
-                                            holeName: "Markers Top - Circles",
-                                            selectionSetName: "Markers Top - Circles",
-                                        })
-                                    }}
-                                    disabled={remapLoading}
-                                    className={[
-                                        "flex items-center justify-center rounded-md transition-all duration-200 shrink-0 w-7 h-7",
-                                        remapLoading
-                                            ? "opacity-40 cursor-wait text-muted-foreground"
-                                            : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10 cursor-pointer",
-                                    ].join(" ")}
-                                    title="Remap marker holes to selection set"
-                                >
-                                    {remapLoading
-                                        ? <RefreshCw size={12} className="animate-spin" />
-                                        : <Crosshair size={12} />
-                                    }
-                                </button>
-                            )}
                             {renderToggleButton(item)}
                         </div>
 
@@ -388,7 +422,7 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
             {/* ── Header ── */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
                 <Layers size={14} className="text-muted-foreground shrink-0" />
-                <span className="text-sm font-bold font-heading flex-1">Features</span>
+                <span className="text-sm font-bold font-heading flex-1">Options</span>
                 <button
                     onClick={refreshTimeline}
                     disabled={loading}
@@ -424,7 +458,7 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                         const isActive = stateFilter === f
                         const count = f === "all" ? summary?.total_items
                             : f === "active" ? summary?.active_count
-                            : summary?.suppressed_count
+                                : summary?.suppressed_count
                         const label = f === "all" ? "All" : f === "active" ? "Active" : "Off"
                         return (
                             <button
@@ -434,8 +468,8 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                                     "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150",
                                     isActive
                                         ? f === "active" ? "bg-emerald-500 text-white shadow-sm"
-                                        : f === "suppressed" ? "bg-amber-500 text-white shadow-sm"
-                                        : "bg-foreground text-background shadow-sm"
+                                            : f === "suppressed" ? "bg-amber-500 text-white shadow-sm"
+                                                : "bg-foreground text-background shadow-sm"
                                         : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
                                 ].join(" ")}
                             >
@@ -456,7 +490,7 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                     <input
                         ref={searchInputRef}
                         type="text"
-                        placeholder="Search features..."
+                        placeholder="Search options..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         className="w-full h-8 pl-8 pr-8 text-xs rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/40 transition-shadow"
@@ -517,6 +551,37 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                 </div>
             </ScrollArea>
 
+            {/* ── Action buttons ── */}
+            <div className="px-4 py-2.5 border-t border-border shrink-0 flex flex-col gap-1.5">
+                {ACTION_BUTTONS.map(btn => {
+                    const isLoading = actionLoading[btn.id] ?? false
+                    const idx = actionIndex[btn.id] ?? 0
+                    return (
+                        <button
+                            key={btn.id}
+                            onClick={() => handleActionButton(btn)}
+                            disabled={isLoading}
+                            className={[
+                                "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200",
+                                isLoading
+                                    ? "opacity-50 cursor-wait bg-muted text-muted-foreground"
+                                    : "bg-muted hover:bg-accent text-foreground cursor-pointer",
+                            ].join(" ")}
+                        >
+                            {isLoading ? <RefreshCw size={13} className="animate-spin" /> : btn.icon}
+                            <span>
+                                {(() => {
+                                    const lbl = btn.label(idx)
+                                    const sep = lbl.indexOf(': ')
+                                    if (sep === -1) return lbl
+                                    return <>{lbl.slice(0, sep + 2)}<strong>{lbl.slice(sep + 2)}</strong></>
+                                })()}
+                            </span>
+                        </button>
+                    )
+                })}
+            </div>
+
             {/* ── Footer (bulk actions) ── */}
             {items.length > 0 && (
                 <div className="px-4 py-2.5 border-t border-border bg-background shrink-0 flex items-center gap-1 rounded-bl-[10px]">
@@ -553,10 +618,10 @@ export function TimelinePanel({ isOpen: controlledOpen, onOpenChange }: Timeline
                     variant="outline"
                     size="sm"
                     className="gap-2"
-                    title={`Features (${summary?.active_count ?? 0}/${summary?.total_items ?? 0})`}
+                    title={`Options (${summary?.active_count ?? 0}/${summary?.total_items ?? 0})`}
                 >
                     <Layers size={14} />
-                    {!summary && <span className="hidden sm:inline">Features</span>}
+                    {!summary && <span className="hidden sm:inline">Options</span>}
                     {summary && (
                         <span className="text-xs px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground tabular-nums">
                             {summary.active_count}/{summary.total_items}

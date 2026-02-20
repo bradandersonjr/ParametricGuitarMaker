@@ -13,12 +13,13 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { ComboboxSelect } from "@/components/ui/combobox"
 import { sendToPython } from "@/lib/fusion-bridge"
 import type { ModelPayload, ParameterGroup, Parameter, PendingParam } from "@/types"
 import { ChevronDown, ChevronRight, LayoutGrid, X, Search, Undo2, Redo2, Plus, Minus, AlertCircle, RefreshCw, RotateCcw, Check, GripVertical } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { HistoryPopover, IconTooltip } from "@/components/HistoryPopover"
-import { TimelinePanel } from "@/components/TimelinePanel"
+import { OptionsPanel } from "@/components/TimelinePanel"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { usePreferences } from "@/hooks/usePreferences"
 import {
@@ -288,8 +289,8 @@ function CategoryCombobox({
   value,
   onChange,
   options,
-  onAddCategory,
-  onRemoveCategory,
+  onAddCategory: _onAddCategory,
+  onRemoveCategory: _onRemoveCategory,
   disabled,
 }: {
   value: string
@@ -299,117 +300,21 @@ function CategoryCombobox({
   onRemoveCategory?: (id: string) => void
   disabled?: boolean
 }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState("")
-
-  const filtered = options.filter((opt) =>
-    opt.label.toLowerCase().includes(search.toLowerCase())
+  // Filter out Uncategorized and Metadata from the dropdown, but keep all as valid values
+  const filteredOptions = options.filter(
+    (opt) => opt.label !== "Uncategorized" && opt.label !== "Metadata"
   )
 
-  const selectedLabel =
-    options.find((opt) => opt.id === value)?.label || "Select category..."
-
-  // Check if search text is a new category (not in options and not empty)
-  const canCreateNew = search.trim().length > 0 && !options.some((opt) => opt.label.toLowerCase() === search.toLowerCase())
-
-  const handleCreateNew = () => {
-    const normalized = search.trim()
-    if (normalized.length === 0) return
-
-    // Capitalize first letter
-    const capitalized = normalized.charAt(0).toUpperCase() + normalized.slice(1)
-    const newId = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-
-    onAddCategory?.(newId, capitalized)
-    onChange(newId)
-    setOpen(false)
-    setSearch("")
-  }
-
-  const inputRef = React.useRef<HTMLInputElement>(null)
-
   return (
-    <div className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        value={open ? search : selectedLabel}
-        onChange={(e) => setSearch(e.target.value)}
-        onFocus={() => !disabled && setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && canCreateNew && !disabled) {
-            e.preventDefault()
-            handleCreateNew()
-          }
-        }}
-        disabled={disabled}
-        placeholder="Select or type..."
-        className="w-full h-8 px-2.5 text-xs rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/30"
-      />
-      {open && !disabled && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
-          <div className="fixed z-50 mt-1 rounded-lg border border-border bg-popover shadow-md py-1 max-h-48 overflow-y-auto" style={{
-            top: inputRef.current ? `${inputRef.current.getBoundingClientRect().bottom}px` : '0',
-            left: inputRef.current ? `${inputRef.current.getBoundingClientRect().left}px` : '0',
-            width: inputRef.current ? `${inputRef.current.getBoundingClientRect().width}px` : '0',
-          }}>
-            {/* Create new category option */}
-            {canCreateNew && (
-              <button
-                onClick={handleCreateNew}
-                className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-muted text-green-700 dark:text-green-400 font-medium border-b border-border/50"
-              >
-                + Create "{search.trim()}"
-              </button>
-            )}
-
-            {filtered.length === 0 && !canCreateNew ? (
-              <div className="px-3 py-1.5 text-xs text-muted-foreground">
-                No results found
-              </div>
-            ) : (
-              filtered.map((opt) => (
-                <div
-                  key={opt.id}
-                  className="flex items-center w-full group/item"
-                >
-                  <button
-                    onClick={() => {
-                      onChange(opt.id)
-                      setOpen(false)
-                      setSearch("")
-                    }}
-                    className={[
-                      "flex-1 text-left px-3 py-1.5 text-xs transition-colors hover:bg-muted",
-                      value === opt.id ? "bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-medium" : "text-foreground",
-                    ].join(" ")}
-                  >
-                    {opt.label}
-                  </button>
-                  {/* Delete button for custom categories */}
-                  {opt.id.startsWith("custom-") && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onRemoveCategory?.(opt.id)
-                      }}
-                      className="px-2 py-1.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all shrink-0"
-                      title="Delete category"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </>
-      )}
-    </div>
+    <ComboboxSelect
+      value={value}
+      onValueChange={onChange}
+      options={filteredOptions.map((opt) => ({ value: opt.id, label: opt.label }))}
+      placeholder="Select category..."
+      searchPlaceholder="Search categories..."
+      emptyText="No category found."
+      disabled={disabled}
+    />
   )
 }
 
@@ -1002,16 +907,18 @@ function AddParamForm({
           />
           {nameError && <p className="text-[10px] text-red-500 mt-0.5">{nameError}</p>}
         </div>
-        <select
+        <ComboboxSelect
           value={unitKind}
-          onChange={(e) => setUnitKind(e.target.value as "length" | "angle" | "unitless")}
-          onKeyDown={(e) => { if (e.key === "Enter" && isValid) handleAdd() }}
-          className="h-7 px-2 text-xs rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring shrink-0"
-        >
-          <option value="length">Length ({documentUnit})</option>
-          <option value="angle">Angle (deg)</option>
-          <option value="unitless">Unitless</option>
-        </select>
+          onValueChange={(val) => setUnitKind(val as "length" | "angle" | "unitless")}
+          options={[
+            { value: "length", label: `Length (${documentUnit})` },
+            { value: "angle", label: "Angle (deg)" },
+            { value: "unitless", label: "Unitless" },
+          ]}
+          placeholder="Select unit..."
+          className="h-7 px-2 text-xs w-32 shrink-0"
+          showSearch={false}
+        />
       </div>
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
@@ -1203,31 +1110,31 @@ function GroupSection({
           className={`flex-1 flex items-center gap-2 px-2 py-2 transition-colors text-left ${!dragHandleProps || searchQuery ? "pl-3" : ""} ${disabled ? "hover:bg-muted/30" : "bg-transparent"}`}
           onClick={() => setOpen((o) => !o)}
         >
-        <span className="text-muted-foreground">
-          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </span>
-        <LayoutGrid size={13} className="text-muted-foreground shrink-0" />
-        <span className={`text-xs font-semibold font-heading ${disabled ? "text-muted-foreground" : ""}`}>{group.label}</span>
-        <span className="text-xs text-muted-foreground font-normal">
-          ({totalCount} parameter{totalCount !== 1 ? "s" : ""})
-        </span>
-        {disabled && (
-          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-            Coming soon
+          <span className="text-muted-foreground">
+            {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           </span>
-        )}
-        {!disabled && showAddButton && (
-          <span
-            role="button"
-            aria-label={`Add parameter to ${group.label}`}
-            title={`Add parameter to ${group.label}`}
-            className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
-            onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
-          >
-            <Plus size={11} />
-            New Parameter
+          <LayoutGrid size={13} className="text-muted-foreground shrink-0" />
+          <span className={`text-xs font-semibold font-heading ${disabled ? "text-muted-foreground" : ""}`}>{group.label}</span>
+          <span className="text-xs text-muted-foreground font-normal">
+            ({totalCount} parameter{totalCount !== 1 ? "s" : ""})
           </span>
-        )}
+          {disabled && (
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+              Coming soon
+            </span>
+          )}
+          {!disabled && showAddButton && (
+            <span
+              role="button"
+              aria-label={`Add parameter to ${group.label}`}
+              title={`Add parameter to ${group.label}`}
+              className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
+              onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
+            >
+              <Plus size={11} />
+              New Parameter
+            </span>
+          )}
         </button>
       </div>
       {open && (
@@ -1850,7 +1757,7 @@ export function ParametersPage({
           </div>
           {!isInitial && (
             <div className="absolute right-2">
-              <TimelinePanel isOpen={timelineSheetOpen} onOpenChange={setTimelineSheetOpen} />
+              <OptionsPanel isOpen={timelineSheetOpen} onOpenChange={setTimelineSheetOpen} />
             </div>
           )}
         </div>
