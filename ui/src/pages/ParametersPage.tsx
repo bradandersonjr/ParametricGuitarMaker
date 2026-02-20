@@ -1626,10 +1626,10 @@ export function ParametersPage({
 
   const scaleModeChanged = scaleMode !== originalScaleMode
   const radiusModeChanged = radiusMode !== originalRadiusMode
-  const initialChangeCount = isInitial ? (modifiedCount || (scaleModeChanged ? 1 : 0) || (radiusModeChanged ? 1 : 0)) : 0
+  const totalChangeCount = modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeChanged ? 1 : 0) + pendingParams.length
+  const initialChangeCount = isInitial ? totalChangeCount : 0
   const hasChanges = modifiedCount > 0 || scaleModeChanged || radiusModeChanged
   const hasPending = pendingParams.length > 0
-  const totalChangeCount = modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeChanged ? 1 : 0) + pendingParams.length
   const canUndo = historyIndex >= 0
   const canRedo = historyIndex < history.length - 1
   const hasValidationErrors = Object.keys(validationErrors).length > 0
