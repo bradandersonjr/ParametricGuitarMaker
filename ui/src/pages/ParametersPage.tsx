@@ -1614,8 +1614,13 @@ export function ParametersPage({
       const nutVal = displayValues["NutRadius"] ?? ""
       next["HeelRadius"] = nutVal
     }
+    if (radiusMode === "flat") {
+      const flatValue = documentUnit === "mm" ? "254000" : "10000"
+      next["NutRadius"] = flatValue
+      next["HeelRadius"] = flatValue
+    }
     return next
-  }, [displayValues, scaleMode, radiusMode])
+  }, [displayValues, scaleMode, radiusMode, documentUnit])
 
   const modifiedCount = payload
     ? Object.entries(finalDisplayValues).filter(([name, val]) => {
@@ -2166,8 +2171,8 @@ export function ParametersPage({
                 groupId: p.groupId,
               }))
 
-              // Apply radius mode change first if changed to flat
-              if (radiusModeFlatChanged) {
+              // Apply radius mode change first if changed to flat (only in live mode)
+              if (radiusModeFlatChanged && !isInitial) {
                 sendToPython("SET_RADIUS_MODE", { mode: radiusMode })
                 // Small delay to let radius mode apply before parameters
                 setTimeout(() => {
