@@ -68,24 +68,10 @@ export interface PendingParam {
   description: string  // optional Fusion comment
 }
 
-/** Timeline item representation */
-export interface TimelineItem {
+/** Suppression state of a single timeline group */
+export interface GroupState {
   name: string
-  type: "Feature" | "Group"
-  /** Fine-grained feature category from Fusion's objectType, e.g. "Sketch", "Extrude", "Fillet" */
-  featureType?: string | null
   suppressed: boolean
-  index: number
-  children?: TimelineItem[]
-}
-
-/** Timeline summary state */
-export interface TimelineSummary {
-  total_items: number
-  active_count: number
-  suppressed_count: number
-  group_count: number
-  feature_count: number
 }
 
 /** Response from timeline operations */

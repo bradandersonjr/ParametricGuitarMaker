@@ -29,3 +29,4 @@ docs/
 
 # User preferences (created and modified per user)
 preferences.json
+radius_cache.json

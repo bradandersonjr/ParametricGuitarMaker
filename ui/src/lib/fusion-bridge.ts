@@ -21,8 +21,8 @@ declare global {
   }
 }
 
-export type IncomingAction = "PUSH_MODEL_STATE" | "PUSH_TEMPLATES" | "COMPUTING" | "response" | "PUSH_TIMELINE_ITEMS" | "PUSH_TIMELINE_SUMMARY" | "TIMELINE_OPERATION_RESULT" | "HOLE_POSITION_RESULT" | "PREFERENCES_LOADED" | "PREFERENCES_SAVED"
-export type OutgoingAction = "ready" | "GET_MODEL_STATE" | "APPLY_PARAMS" | "cancel" | "OPEN_URL" | "GET_TEMPLATES" | "LOAD_TEMPLATE" | "IMPORT_SHARE" | "SAVE_TEMPLATE" | "DELETE_TEMPLATE" | "OPEN_TEMPLATES_FOLDER" | "GET_TIMELINE_ITEMS" | "GET_TIMELINE_SUMMARY" | "APPLY_TIMELINE_CHANGES" | "SET_PARAM_CATEGORY" | "EDIT_PARAM" | "DELETE_PARAM" | "REMAP_HOLE_TO_SELECTION_SET" | "GET_PREFERENCES" | "SAVE_PREFERENCES"
+export type IncomingAction = "PUSH_MODEL_STATE" | "PUSH_TEMPLATES" | "COMPUTING" | "response" | "PUSH_GROUP_STATES" | "TIMELINE_OPERATION_RESULT" | "HOLE_POSITION_RESULT" | "ZERO_FRET_RESULT" | "BLIND_FRETS_RESULT" | "RADIUS_MODE_RESULT" | "HEEL_CURVE_RESULT" | "PREFERENCES_LOADED" | "PREFERENCES_SAVED"
+export type OutgoingAction = "ready" | "GET_MODEL_STATE" | "APPLY_PARAMS" | "cancel" | "OPEN_URL" | "GET_TEMPLATES" | "LOAD_TEMPLATE" | "IMPORT_SHARE" | "SAVE_TEMPLATE" | "DELETE_TEMPLATE" | "OPEN_TEMPLATES_FOLDER" | "GET_GROUP_STATES" | "APPLY_TIMELINE_CHANGES" | "SET_PARAM_CATEGORY" | "EDIT_PARAM" | "DELETE_PARAM" | "REMAP_HOLE_TO_SELECTION_SET" | "TOGGLE_ZERO_FRET" | "TOGGLE_BLIND_FRETS" | "SET_RADIUS_MODE" | "TOGGLE_HEEL_CURVE" | "GET_PREFERENCES" | "SAVE_PREFERENCES"
 
 type MessageHandler = (action: string, dataJson: string) => void
 
@@ -30,7 +30,7 @@ type MessageHandler = (action: string, dataJson: string) => void
 
 let handler: MessageHandler | null = null
 
-// Secondary handlers (e.g. TimelinePanel) that receive all Python messages
+// Secondary handlers (e.g. OptionsPanel) that receive all Python messages
 const secondaryHandlers = new Set<MessageHandler>()
 
 /** Register an additional handler for messages from Python. Returns an unsubscribe function. */

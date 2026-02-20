@@ -1281,8 +1281,6 @@ export function ParametersPage({
   const [activeAddFormGroupId, setActiveAddFormGroupId] = useState<string | null>(null)
   const [activeAddFormCustomCategoryId, setActiveAddFormCustomCategoryId] = useState<string | null>(null)
   const [customCategories, setCustomCategories] = useState<{ id: string; label: string }[]>([])
-  const [refreshError, setRefreshError] = useState(false)
-  const refreshErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track previous mode and documentUnit to detect when they change
   const previousModeRef = useRef<string | undefined>(undefined)
@@ -1987,22 +1985,10 @@ export function ParametersPage({
 
       {/* Action bar */}
       <TooltipProvider delayDuration={500}>
-        {refreshError && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border-t border-destructive/20 text-destructive text-xs">
-            <AlertCircle size={13} className="shrink-0" />
-            No fretboard detected in the current document.
-          </div>
-        )}
         <footer className="flex items-center gap-2 px-3 py-2.5 border-t border-border bg-card shrink-0">
           <IconTooltip label="Refresh from Fusion">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-              if (isInitial) {
-                setRefreshError(true)
-                if (refreshErrorTimerRef.current) clearTimeout(refreshErrorTimerRef.current)
-                refreshErrorTimerRef.current = setTimeout(() => setRefreshError(false), 4000)
-              } else {
-                sendToPython("GET_MODEL_STATE")
-              }
+              sendToPython("GET_MODEL_STATE")
             }}>
               <RefreshCw size={14} />
             </Button>

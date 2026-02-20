@@ -33,7 +33,15 @@ export function AboutPage({ version }: { version: string }) {
           <div className="border-t border-border/50 w-full my-1" />
 
           <div>
-            <p className="text-xs font-semibold font-heading">Built by <button onClick={() => openUrl("https://bradandersonjr.com")} className="text-primary hover:underline bg-none border-none p-0 cursor-pointer">brad anderson jr.</button></p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Part of <button onClick={() => openUrl("https://parametricguitar.com")} className="text-primary font-semibold hover:underline bg-none border-none p-0 cursor-pointer">The Parametric Guitar Project</button>, a living knowledge base dedicated to leveraging Autodesk Fusion for the development of parametric guitars through a modular framework.
+            </p>
+          </div>
+
+          <div className="border-t border-border/50 w-full my-1" />
+
+          <div>
+            <p className="text-xs font-semibold font-heading">Built by <button onClick={() => openUrl("https://bradandersonjr.com")} className="text-primary hover:underline bg-none border-none p-0 cursor-pointer">brad anderson jr</button></p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Maker, builder, and open-source enthusiast.
             </p>

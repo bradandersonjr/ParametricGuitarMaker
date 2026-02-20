@@ -28,6 +28,22 @@ _pending_timeline_op = None  # {'action': str, 'data': dict}
 _HOLE_POSITION_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_holePositionOp'
 _pending_hole_op = None  # {'holeName': str, 'selectionSetName': str}
 
+# ── Deferred zero-fret event ──────────────────────────────────────────
+_ZERO_FRET_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_zeroFretOp'
+_pending_zero_fret_op = None  # {'enabled': bool}
+
+# ── Deferred blind-frets event ────────────────────────────────────────
+_BLIND_FRETS_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_blindFretsOp'
+_pending_blind_frets_op = None  # {'enabled': bool}
+
+# ── Deferred radius-mode event ────────────────────────────────────────────
+_RADIUS_MODE_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_radiusModeOp'
+_pending_radius_mode_op = None  # {'mode': str}
+
+# ── Deferred heel-curve event ─────────────────────────────────────────
+_HEEL_CURVE_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_heelCurveOp'
+_pending_heel_curve_op = None  # {'enabled': bool}
+
 app = adsk.core.Application.get()
 ui = app.userInterface
 
@@ -113,6 +129,22 @@ def start(is_startup=False):
     hole_event = app.registerCustomEvent(_HOLE_POSITION_EVENT_ID)
     futil.add_handler(hole_event, _deferred_hole_position_handler)
 
+    # Register custom event for deferred zero-fret operations
+    zero_fret_event = app.registerCustomEvent(_ZERO_FRET_EVENT_ID)
+    futil.add_handler(zero_fret_event, _deferred_zero_fret_handler)
+
+    # Register custom event for deferred blind-frets operations
+    blind_frets_event = app.registerCustomEvent(_BLIND_FRETS_EVENT_ID)
+    futil.add_handler(blind_frets_event, _deferred_blind_frets_handler)
+
+    # Register custom event for deferred radius-mode operations
+    radius_mode_event = app.registerCustomEvent(_RADIUS_MODE_EVENT_ID)
+    futil.add_handler(radius_mode_event, _deferred_radius_mode_handler)
+
+    # Register custom event for deferred heel-curve operations
+    heel_curve_event = app.registerCustomEvent(_HEEL_CURVE_EVENT_ID)
+    futil.add_handler(heel_curve_event, _deferred_heel_curve_handler)
+
     # Show welcome message when manually run, but not on Fusion startup
     if not is_startup:
         ui.messageBox(
@@ -147,6 +179,10 @@ def stop():
     app.unregisterCustomEvent(_APPLY_EVENT_ID)
     app.unregisterCustomEvent(_TIMELINE_EVENT_ID)
     app.unregisterCustomEvent(_HOLE_POSITION_EVENT_ID)
+    app.unregisterCustomEvent(_ZERO_FRET_EVENT_ID)
+    app.unregisterCustomEvent(_BLIND_FRETS_EVENT_ID)
+    app.unregisterCustomEvent(_RADIUS_MODE_EVENT_ID)
+    app.unregisterCustomEvent(_HEEL_CURVE_EVENT_ID)
 
 
 # ── Event handlers ──────────────────────────────────────────────────
@@ -673,17 +709,26 @@ def palette_incoming(args: adsk.core.HTMLEventArgs):
     elif action == 'DELETE_PARAM':
         _on_delete_param(args.data)
 
-    elif action == 'GET_TIMELINE_ITEMS':
-        _on_get_timeline_items()
+    elif action == 'GET_GROUP_STATES':
+        _on_get_group_states()
 
     elif action == 'APPLY_TIMELINE_CHANGES':
         _queue_timeline_op('APPLY_TIMELINE_CHANGES', args.data)
 
-    elif action == 'GET_TIMELINE_SUMMARY':
-        _on_get_timeline_summary()
-
     elif action == 'REMAP_HOLE_TO_SELECTION_SET':
         _queue_hole_position_op(args.data)
+
+    elif action == 'TOGGLE_ZERO_FRET':
+        _queue_zero_fret_op(args.data)
+
+    elif action == 'TOGGLE_BLIND_FRETS':
+        _queue_blind_frets_op(args.data)
+
+    elif action == 'SET_RADIUS_MODE':
+        _queue_radius_mode_op(args.data)
+
+    elif action == 'TOGGLE_HEEL_CURVE':
+        _queue_heel_curve_op(args.data)
 
     elif action == 'GET_PREFERENCES':
         _on_get_preferences()
@@ -932,19 +977,17 @@ def _on_delete_param(data_json):
 
 # ── Timeline management handlers ─────────────────────────────────
 
-def _on_get_timeline_items():
-    """Send all timeline items to the UI."""
+def _on_get_group_states():
+    """Send curated group suppression states to the UI."""
     design = adsk.fusion.Design.cast(app.activeProduct)
     if not design:
         return
 
-    items = parameter_bridge.get_timeline_items(design)
-    payload = {'items': items}
-
+    states = parameter_bridge.get_group_states(design)
     palette = ui.palettes.itemById(PALETTE_ID)
     if palette:
-        palette.sendInfoToHTML('PUSH_TIMELINE_ITEMS', json.dumps(payload))
-    futil.log(f'{CMD_NAME}: Sent {len(items)} timeline item(s)')
+        palette.sendInfoToHTML('PUSH_GROUP_STATES', json.dumps({'groups': states}))
+    futil.log(f'{CMD_NAME}: Sent {len(states)} group state(s)')
 
 
 def _queue_timeline_op(action: str, data_json: str):
@@ -1033,19 +1076,6 @@ def _deferred_timeline_handler(args: adsk.core.CustomEventArgs):
         palette.sendInfoToHTML('TIMELINE_OPERATION_RESULT', json.dumps(result))
 
 
-def _on_get_timeline_summary():
-    """Send timeline summary to the UI."""
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        return
-
-    summary = parameter_bridge.get_timeline_summary(design)
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.sendInfoToHTML('PUSH_TIMELINE_SUMMARY', json.dumps(summary))
-    futil.log(f'{CMD_NAME}: Sent timeline summary')
-
-
 # ── Hole-position remap handlers ─────────────────────────────────
 
 def _queue_hole_position_op(data_json: str):
@@ -1089,9 +1119,181 @@ def _deferred_hole_position_handler(args: adsk.core.CustomEventArgs):
     if palette:
         palette.sendInfoToHTML('HOLE_POSITION_RESULT', json.dumps(result))
 
-    # Auto-refresh the timeline panel
-    _on_get_timeline_items()
-    _on_get_timeline_summary()
+    # Auto-refresh the options panel
+    _on_get_group_states()
+
+
+def _queue_zero_fret_op(data_json: str):
+    """Queue a zero-fret toggle to run on the Fusion main thread."""
+    global _pending_zero_fret_op
+    try:
+        data = json.loads(data_json)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Bad TOGGLE_ZERO_FRET data: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    futil.log(f'{CMD_NAME}: Queueing zero-fret toggle — enabled={data.get("enabled")}')
+    _pending_zero_fret_op = data
+    app.fireCustomEvent(_ZERO_FRET_EVENT_ID)
+
+
+def _deferred_zero_fret_handler(args: adsk.core.CustomEventArgs):
+    """Runs on the Fusion main thread — toggles the Zero Fret feature."""
+    global _pending_zero_fret_op
+
+    op = _pending_zero_fret_op
+    _pending_zero_fret_op = None
+
+    if op is None:
+        return
+
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    if not design:
+        futil.log(f'{CMD_NAME}: zero-fret toggle — no active design',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    enabled = op.get('enabled', False)
+
+    result = parameter_bridge.toggle_zero_fret(design, enabled)
+    futil.log(f'{CMD_NAME}: zero-fret toggle result: {result["message"]}')
+
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if palette:
+        palette.sendInfoToHTML('ZERO_FRET_RESULT', json.dumps(result))
+
+    # Auto-refresh the options panel
+    _on_get_group_states()
+
+
+def _queue_blind_frets_op(data_json: str):
+    """Queue a blind-frets toggle to run on the Fusion main thread."""
+    global _pending_blind_frets_op
+    try:
+        data = json.loads(data_json)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Bad TOGGLE_BLIND_FRETS data: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    futil.log(f'{CMD_NAME}: Queueing blind-frets toggle — enabled={data.get("enabled")}')
+    _pending_blind_frets_op = data
+    app.fireCustomEvent(_BLIND_FRETS_EVENT_ID)
+
+
+def _deferred_blind_frets_handler(args: adsk.core.CustomEventArgs):
+    """Runs on the Fusion main thread — toggles the Blind Frets feature."""
+    global _pending_blind_frets_op
+
+    op = _pending_blind_frets_op
+    _pending_blind_frets_op = None
+
+    if op is None:
+        return
+
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    if not design:
+        futil.log(f'{CMD_NAME}: blind-frets toggle — no active design',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    enabled = op.get('enabled', False)
+
+    result = parameter_bridge.toggle_blind_frets(design, enabled)
+    futil.log(f'{CMD_NAME}: blind-frets toggle result: {result["message"]}')
+
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if palette:
+        palette.sendInfoToHTML('BLIND_FRETS_RESULT', json.dumps(result))
+
+    # Auto-refresh the options panel
+    _on_get_group_states()
+
+
+def _queue_radius_mode_op(data_json: str):
+    """Queue a radius mode change to run on the Fusion main thread."""
+    global _pending_radius_mode_op
+    try:
+        data = json.loads(data_json)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Bad SET_RADIUS_MODE data: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    futil.log(f'{CMD_NAME}: Queueing radius mode change — mode={data.get("mode")}')
+    _pending_radius_mode_op = data
+    app.fireCustomEvent(_RADIUS_MODE_EVENT_ID)
+
+
+def _deferred_radius_mode_handler(args: adsk.core.CustomEventArgs):
+    """Runs on the Fusion main thread — sets the radius mode."""
+    global _pending_radius_mode_op
+
+    op = _pending_radius_mode_op
+    _pending_radius_mode_op = None
+
+    if op is None:
+        return
+
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    if not design:
+        futil.log(f'{CMD_NAME}: radius mode change — no active design',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    result = parameter_bridge.set_radius_mode(design, op)
+    futil.log(f'{CMD_NAME}: radius mode change result: {result["message"]}')
+
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if palette:
+        palette.sendInfoToHTML('RADIUS_MODE_RESULT', json.dumps(result))
+
+    # Auto-refresh the options panel
+    _on_get_group_states()
+
+
+def _queue_heel_curve_op(data_json: str):
+    """Queue a heel curve toggle to run on the Fusion main thread."""
+    global _pending_heel_curve_op
+    try:
+        data = json.loads(data_json)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Bad TOGGLE_HEEL_CURVE data: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    futil.log(f'{CMD_NAME}: Queueing heel curve toggle — enabled={data.get("enabled")}')
+    _pending_heel_curve_op = data
+    app.fireCustomEvent(_HEEL_CURVE_EVENT_ID)
+
+
+def _deferred_heel_curve_handler(args: adsk.core.CustomEventArgs):
+    """Runs on the Fusion main thread — toggles the Heel Curve feature."""
+    global _pending_heel_curve_op
+
+    op = _pending_heel_curve_op
+    _pending_heel_curve_op = None
+
+    if op is None:
+        return
+
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    if not design:
+        futil.log(f'{CMD_NAME}: heel curve toggle — no active design',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    enabled = op.get('enabled', False)
+    result = parameter_bridge.toggle_heel_curve(design, enabled)
+    futil.log(f'{CMD_NAME}: heel curve toggle result: {result["message"]}')
+
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if palette:
+        palette.sendInfoToHTML('HEEL_CURVE_RESULT', json.dumps(result))
+
+    # Auto-refresh the options panel
+    _on_get_group_states()
 
 
 def palette_closed(args: adsk.core.UserInterfaceGeneralEventArgs):
