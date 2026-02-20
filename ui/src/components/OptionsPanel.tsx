@@ -236,7 +236,7 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
             {/* ── Header ── */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
                 <Layers size={14} className="text-muted-foreground shrink-0" />
-                <span className="text-sm font-bold font-heading flex-1">Options</span>
+                <span className="text-sm font-bold font-heading flex-1">Customization Options</span>
                 <button
                     onClick={refreshGroupStates}
                     disabled={loading}
@@ -350,7 +350,7 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
                     variant="outline"
                     size="sm"
                     className="gap-2"
-                    title="Options"
+                    title="Customization Options"
                 >
                     <Layers size={14} />
                     <span className="hidden sm:inline">Options</span>
