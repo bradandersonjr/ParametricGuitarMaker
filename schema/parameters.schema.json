@@ -35,7 +35,6 @@
           "precision": 0,
           "relatedParams": [
             "NeutralFret",
-            "HeelTransitionFret",
             "FallAwayFret"
           ],
           "notes": "Affects fretboard length, heel transition, and fall-away configuration. | Expression: 24",
@@ -882,32 +881,6 @@
           "deprecated": false
         },
         {
-          "name": "HeelTransitionFret",
-          "label": "Heel Trans. Fret",
-          "unitKind": "unitless",
-          "controlType": "number",
-          "default": "17",
-          "min": 1,
-          "max": 36,
-          "step": 1,
-          "description": "Fret number where the heel transition begins.",
-          "notes": "Expression: 17",
-          "editable": true,
-          "deprecated": false
-        },
-        {
-          "name": "HeelTransition",
-          "label": "Heel Transition",
-          "unitKind": "length",
-          "controlType": "number",
-          "default": "15.713758673",
-          "defaultMetric": "399",
-          "description": "Length of the heel transition zone.",
-          "notes": "Expression: ( ( ScaleLengthBass + ScaleLengthTreb ) / 2 ) * ( 1 - 1 / ( 2 ^ ( HeelTransitionFret / 12 ) ) )",
-          "editable": false,
-          "deprecated": true
-        },
-        {
           "name": "HeelRadius",
           "label": "Heel Radius",
           "unitKind": "length",
@@ -930,8 +903,8 @@
           "label": "Heel Curve Radius",
           "unitKind": "length",
           "controlType": "number",
-          "default": "4.00",
-          "defaultMetric": "102",
+          "default": "8.00",
+          "defaultMetric": "203",
           "min": 1,
           "max": 12,
           "step": 0.25,
@@ -939,7 +912,7 @@
           "maxMetric": 305,
           "stepMetric": 5,
           "description": "Radius of the fretboard heel-edge curve",
-          "notes": "Expression: 4 in",
+          "notes": "Expression: 8 in",
           "editable": true,
           "deprecated": false
         },
