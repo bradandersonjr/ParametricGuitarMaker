@@ -1625,7 +1625,6 @@ export function ParametersPage({
     : 0
 
   const scaleModeChanged = scaleMode !== originalScaleMode
-  const radiusModeChanged = radiusMode !== originalRadiusMode
   const radiusModeFlatChanged = radiusMode === "flat" && originalRadiusMode !== "flat"
   const totalChangeCount = modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeFlatChanged ? 1 : 0) + pendingParams.length
   const initialChangeCount = isInitial ? totalChangeCount : 0
