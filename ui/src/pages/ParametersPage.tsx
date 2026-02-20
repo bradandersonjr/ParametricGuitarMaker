@@ -14,6 +14,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { ComboboxSelect } from "@/components/ui/combobox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { sendToPython } from "@/lib/fusion-bridge"
 import type { ModelPayload, ParameterGroup, Parameter, PendingParam } from "@/types"
 import { ChevronDown, ChevronRight, LayoutGrid, X, Search, Undo2, Redo2, Plus, Minus, AlertCircle, RefreshCw, RotateCcw, Check, GripVertical } from "lucide-react"
@@ -56,6 +63,18 @@ function filterNumericInput(raw: string, integerOnly: boolean): string {
     else if (ch === "." && !hasDot) { result += ch; hasDot = true }
   }
   return result
+}
+
+/** Remove trailing zeros from numeric strings.
+ *  "16.00" → "16", "25.400" → "25.4", "12.75" → "12.75", "0.0625" → "0.0625" */
+function stripTrailingZeros(value: string): string {
+  // Only process if it looks like a decimal number
+  if (!/^\d*\.?\d+$/.test(value)) return value
+  // Convert to number and back to remove trailing zeros
+  const num = parseFloat(value)
+  if (isNaN(num)) return value
+  // Use toString() which automatically removes trailing zeros
+  return num.toString()
 }
 
 /** Compare two parameter expressions, treating numerically-equal strings as equal.
@@ -580,6 +599,7 @@ function SchemaParamRow({
   hasError,
   errorMessage,
   scaleMode,
+  radiusMode,
   editStartValues,
   groupSchemas,
   allParamNames,
@@ -599,6 +619,7 @@ function SchemaParamRow({
   hasError: boolean
   errorMessage?: string
   scaleMode: "single" | "multi"
+  radiusMode: "compound" | "straight" | "flat"
   editStartValues: Record<string, string>
   groupSchemas: { id: string; label: string }[]
   allParamNames: Set<string>
@@ -612,7 +633,12 @@ function SchemaParamRow({
   isInitial: boolean
 }) {
   const [modalOpen, setModalOpen] = useState(false)
-  const label = scaleMode === "single" && param.name === "ScaleLengthBass" ? "Scale Length" : param.label
+  const label =
+    scaleMode === "single" && param.name === "ScaleLengthBass"
+      ? "Scale Length"
+      : radiusMode === "straight" && param.name === "NutRadius"
+      ? "Fretboard Radius"
+      : param.label
 
   return (
     <>
@@ -1000,6 +1026,7 @@ function GroupSection({
   defaultOpen,
   searchQuery,
   scaleMode,
+  radiusMode,
   documentUnit,
   validationErrors,
   editStartValues,
@@ -1030,6 +1057,7 @@ function GroupSection({
   defaultOpen: boolean
   searchQuery: string
   scaleMode: "single" | "multi"
+  radiusMode: "compound" | "straight" | "flat"
   documentUnit: string
   validationErrors: Record<string, string>
   editStartValues: Record<string, string>
@@ -1053,11 +1081,29 @@ function GroupSection({
 }) {
   const [open, setOpen] = useState(defaultOpen)
 
-  // Filter parameters by search query and scale mode
+  // Filter parameters by search query, scale mode, and radius mode
   const filteredParams = group.parameters.filter((p) => {
     // Hide multiscale-only params in single mode
     if (scaleMode === "single" && ["ScaleLengthTreb", "NeutralFret"].includes(p.name)) {
       return false
+    }
+
+    // Hide radius params based on radius mode
+    if (radiusMode === "straight" && p.name === "HeelRadius") {
+      return false // HeelRadius hidden in straight mode
+    }
+    if (radiusMode === "flat" && ["NutRadius", "HeelRadius"].includes(p.name)) {
+      return false // Both hidden in flat mode
+    }
+
+    // Hide HeelCurveRadius when it's set to flat (10000 in or 254000 mm)
+    if (p.name === "HeelCurveRadius") {
+      const heelCurveVal = displayValues["HeelCurveRadius"] ?? ""
+      const flatValueImperial = "10000"
+      const flatValueMetric = "254000"
+      if (heelCurveVal.includes(flatValueImperial) || heelCurveVal.includes(flatValueMetric)) {
+        return false // Hidden when set to flat
+      }
     }
 
     // If showing error filter, only show errored params
@@ -1153,6 +1199,7 @@ function GroupSection({
                 hasError={hasError}
                 errorMessage={validationErrors[param.name]}
                 scaleMode={scaleMode}
+                radiusMode={radiusMode}
                 editStartValues={editStartValues}
                 groupSchemas={groupSchemas}
                 allParamNames={allParamNames}
@@ -1273,6 +1320,8 @@ export function ParametersPage({
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [scaleMode, setScaleMode] = useState<"single" | "multi">("single")
   const [originalScaleMode, setOriginalScaleMode] = useState<"single" | "multi">("single")
+  const [radiusMode, setRadiusMode] = useState<"compound" | "straight" | "flat">("compound")
+  const [originalRadiusMode, setOriginalRadiusMode] = useState<"compound" | "straight" | "flat">("compound")
   const [baselineSet, setBaselineSet] = useState(false)
   const [timelineSheetOpen, setTimelineSheetOpen] = useState(false)
   const [editStartValues, setEditStartValues] = useState<Record<string, string>>({})
@@ -1361,11 +1410,14 @@ export function ParametersPage({
         // If expression doesn't start with a number (e.g. fraction like "( 3 / 16 ) * 1 in"),
         // fall back to the schema default which is the decimal equivalent.
         // Always use only the numeric part — never include the unit suffix.
-        const displayVal = isParamRef
+        const rawDisplayVal = isParamRef
           ? expr
           : numericMatch
             ? numericMatch[1]
             : (defaultVal?.match(/^([\d.]+)/)?.[1] ?? expr)
+
+        // Strip trailing zeros for cleaner display
+        const displayVal = isParamRef ? rawDisplayVal : stripTrailingZeros(rawDisplayVal)
 
         baseline[param.name] = displayVal
         display[param.name] = displayVal
@@ -1389,9 +1441,12 @@ export function ParametersPage({
       for (const param of payload.extraParams) {
         const expr = param.expression ?? param.default ?? ""
         const numericMatch = expr.match(/^([\d.]+)/)
-        const displayVal = numericMatch
+        const rawDisplayVal = numericMatch
           ? numericMatch[1]
           : (param.default?.match(/^([\d.]+)/)?.[1] ?? expr)
+
+        // Strip trailing zeros for cleaner display
+        const displayVal = stripTrailingZeros(rawDisplayVal)
 
         baseline[param.name] = displayVal
         display[param.name] = displayVal
@@ -1440,6 +1495,42 @@ export function ParametersPage({
 
     setScaleMode(derivedScaleMode)
 
+    // Derive radius mode from payload
+    const heelRadiusExpr = (() => {
+      for (const group of payload.groups) {
+        for (const param of group.parameters) {
+          if (param.name === "HeelRadius") return param.expression ?? ""
+        }
+      }
+      return ""
+    })()
+    const nutRadiusExpr = (() => {
+      for (const group of payload.groups) {
+        for (const param of group.parameters) {
+          if (param.name === "NutRadius") return param.expression ?? ""
+        }
+      }
+      return ""
+    })()
+
+    // Determine radius mode:
+    // - Straight: HeelRadius is a reference to NutRadius
+    // - Flat: Both are 10000 in (254000 mm)
+    // - Compound: Neither of the above
+    const isRadiusReference = /^NutRadius$/i.test(heelRadiusExpr.trim())
+    const flatValueImperial = "10000"
+    const flatValueMetric = "254000"
+    const flatValue = documentUnit === 'mm' ? flatValueMetric : flatValueImperial
+    const isFlatNut = nutRadiusExpr.includes(flatValue)
+    const isFlatHeel = heelRadiusExpr.includes(flatValue)
+
+    const derivedRadiusMode: "compound" | "straight" | "flat" =
+      isFlatNut && isFlatHeel ? "flat" :
+      isRadiusReference ? "straight" :
+      "compound"
+
+    setRadiusMode(derivedRadiusMode)
+
     // Detect mode changes (e.g. switching from live doc to fresh doc)
     const modeChanged = payload?.mode !== previousModeRef.current
     const docUnitChanged = documentUnit !== previousDocUnitRef.current
@@ -1455,6 +1546,7 @@ export function ParametersPage({
     if (shouldResetBaseline) {
       setOriginalExpressions(baseline)
       setOriginalScaleMode(derivedScaleMode)
+      setOriginalRadiusMode(derivedRadiusMode)
       setBaselineSet(true)
     }
     previousDocUnitRef.current = documentUnit
@@ -1512,15 +1604,18 @@ export function ParametersPage({
     }
   }, [displayValues, parameterMap, documentUnit])
 
-
   const finalDisplayValues = useMemo(() => {
     const next = { ...displayValues }
     if (scaleMode === "single") {
       const bassVal = displayValues["ScaleLengthBass"] ?? ""
       next["ScaleLengthTreb"] = bassVal
     }
+    if (radiusMode === "straight") {
+      const nutVal = displayValues["NutRadius"] ?? ""
+      next["HeelRadius"] = nutVal
+    }
     return next
-  }, [displayValues, scaleMode])
+  }, [displayValues, scaleMode, radiusMode])
 
   const modifiedCount = payload
     ? Object.entries(finalDisplayValues).filter(([name, val]) => {
@@ -1530,9 +1625,11 @@ export function ParametersPage({
     : 0
 
   const scaleModeChanged = scaleMode !== originalScaleMode
-  const initialChangeCount = isInitial ? (modifiedCount || (scaleModeChanged ? 1 : 0)) : 0
-  const hasChanges = modifiedCount > 0 || scaleModeChanged
+  const radiusModeChanged = radiusMode !== originalRadiusMode
+  const initialChangeCount = isInitial ? (modifiedCount || (scaleModeChanged ? 1 : 0) || (radiusModeChanged ? 1 : 0)) : 0
+  const hasChanges = modifiedCount > 0 || scaleModeChanged || radiusModeChanged
   const hasPending = pendingParams.length > 0
+  const totalChangeCount = modifiedCount + (scaleModeChanged ? 1 : 0) + (radiusModeChanged ? 1 : 0) + pendingParams.length
   const canUndo = historyIndex >= 0
   const canRedo = historyIndex < history.length - 1
   const hasValidationErrors = Object.keys(validationErrors).length > 0
@@ -1544,6 +1641,9 @@ export function ParametersPage({
       const next = { ...prev, [name]: newVal }
       if (scaleMode === "single" && name === "ScaleLengthBass") {
         next["ScaleLengthTreb"] = newVal
+      }
+      if (radiusMode === "straight" && name === "NutRadius") {
+        next["HeelRadius"] = newVal
       }
       return next
     })
@@ -1576,6 +1676,15 @@ export function ParametersPage({
       }
     }
 
+    // In straight radius mode, also handle the mirrored radius
+    if (radiusMode === "straight" && name === "NutRadius") {
+      const heelStart = editStartValues["HeelRadius"] ?? originalExpressions["HeelRadius"] ?? ""
+      const heelCurrent = displayValues["HeelRadius"] ?? ""
+      if (!expressionsEqual(heelCurrent, heelStart)) {
+        trimmed.push({ name: "HeelRadius", oldVal: heelStart, newVal: heelCurrent })
+      }
+    }
+
     const maxHistory = 50
     const capped = trimmed.length > maxHistory ? trimmed.slice(-maxHistory) : trimmed
     setHistory(capped)
@@ -1587,6 +1696,9 @@ export function ParametersPage({
       delete next[name]
       if (name === "ScaleLengthBass") {
         delete next["ScaleLengthTreb"]
+      }
+      if (name === "NutRadius") {
+        delete next["HeelRadius"]
       }
       return next
     })
@@ -1670,6 +1782,7 @@ export function ParametersPage({
   function handleResetAll() {
     setDisplayValues({ ...originalExpressions })
     setScaleMode(originalScaleMode)
+    setRadiusMode(originalRadiusMode)
     setHistory([])
     setHistoryIndex(-1)
   }
@@ -1688,6 +1801,9 @@ export function ParametersPage({
 
     // In single scale mode, ScaleLengthTreb is always linked to ScaleLengthBass by reference
     if (scaleMode === "single" && name === "ScaleLengthTreb") return "ScaleLengthBass"
+
+    // In straight radius mode, HeelRadius is always linked to NutRadius by reference
+    if (radiusMode === "straight" && name === "HeelRadius") return "NutRadius"
 
     // If displayVal is a parameter reference (e.g., "ScaleLengthBass"), don't add unit suffix
     const isParameterRef = /^[A-Za-z_][A-Za-z0-9_]*$/.test(displayVal)
@@ -1720,41 +1836,68 @@ export function ParametersPage({
         </p>
       </header>
 
-      {/* Scale mode toggle - tabs */}
+      {/* Scale & Radius mode selectors */}
       <div className="shrink-0 border-b border-border bg-muted/30">
-        <div className="relative flex items-center justify-center py-2 px-2">
-          <div className="inline-flex bg-muted rounded-xl p-1 gap-1">
-            <button
-              onClick={() => {
-                if (scaleMode === "multi") {
-                  // Just switch mode — don't modify values yet
-                  // Values only change on Import & Apply
-                  setScaleMode("single")
+        <div className="relative flex items-center justify-center gap-4 py-2.5 px-4">
+          {/* Scale length mode */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+              Scale Length:
+            </label>
+            <Select
+              value={scaleMode}
+              onValueChange={(value: string) => {
+                if (value === "single" || value === "multi") {
+                  setScaleMode(value)
                 }
               }}
-              className={[
-                "px-6 py-1.5 text-xs font-medium rounded-lg transition-colors",
-                scaleMode === "single"
-                  ? `bg-background text-foreground shadow-sm ${scaleMode !== originalScaleMode ? "ring-2 ring-amber-400" : ""}`
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
             >
-              Single Scale
-            </button>
-            <button
-              onClick={() => setScaleMode("multi")}
-              className={[
-                "px-6 py-1.5 text-xs font-medium rounded-lg transition-colors",
-                scaleMode === "multi"
-                  ? `bg-background text-foreground shadow-sm ${scaleMode !== originalScaleMode ? "ring-2 ring-amber-400" : ""}`
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              Multi-scale
-            </button>
+              <SelectTrigger
+                className={[
+                  "w-[140px] h-8 text-xs",
+                  scaleMode !== originalScaleMode ? "ring-2 ring-amber-400" : "",
+                ].join(" ")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">Single Scale</SelectItem>
+                <SelectItem value="multi">Multi-scale</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Fretboard radius mode */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+              Radius:
+            </label>
+            <Select
+              value={radiusMode}
+              onValueChange={(value: string) => {
+                if (value === "compound" || value === "straight" || value === "flat") {
+                  setRadiusMode(value)
+                }
+              }}
+            >
+              <SelectTrigger
+                className={[
+                  "w-[120px] h-8 text-xs",
+                  radiusMode !== originalRadiusMode ? "ring-2 ring-amber-400" : "",
+                ].join(" ")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="compound">Compound</SelectItem>
+                <SelectItem value="straight">Straight</SelectItem>
+                <SelectItem value="flat">Flat</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {!isInitial && (
-            <div className="absolute right-2">
+            <div className="ml-auto">
               <OptionsPanel isOpen={timelineSheetOpen} onOpenChange={setTimelineSheetOpen} />
             </div>
           )}
@@ -1896,6 +2039,7 @@ export function ParametersPage({
                           defaultOpen={true}
                           searchQuery={searchQuery}
                           scaleMode={scaleMode}
+                          radiusMode={radiusMode}
                           documentUnit={payload.documentUnit ?? "in"}
                           validationErrors={validationErrors}
                           editStartValues={editStartValues}
@@ -2022,29 +2166,42 @@ export function ParametersPage({
                 groupId: p.groupId,
               }))
 
-              if (isInitial) {
-                const changedParams: Record<string, string> = {}
-                for (const [name, displayVal] of Object.entries(finalDisplayValues)) {
-                  const original = originalExpressions[name]
-                  const isScaleModeChange = name === "ScaleLengthTreb" && scaleModeChanged
-                  if (original === undefined || !expressionsEqual(displayVal, original) || isScaleModeChange) {
-                    changedParams[name] = buildExpression(name, displayVal)
-                  }
-                }
-                setHistory([])
-                setHistoryIndex(-1)
-                sendToPython("APPLY_PARAMS", { updates: changedParams, creates })
+              // Apply radius mode change first if changed
+              if (radiusModeChanged) {
+                sendToPython("SET_RADIUS_MODE", { mode: radiusMode })
+                // Small delay to let radius mode apply before parameters
+                setTimeout(() => {
+                  applyParameterChanges()
+                }, 200)
               } else {
-                const changed: Record<string, string> = {}
-                for (const [name, displayVal] of Object.entries(finalDisplayValues)) {
-                  const original = originalExpressions[name]
-                  const isScaleModeChange = name === "ScaleLengthTreb" && scaleModeChanged
-                  if (original !== undefined && (!expressionsEqual(displayVal, original) || isScaleModeChange)) {
-                    changed[name] = buildExpression(name, displayVal)
+                applyParameterChanges()
+              }
+
+              function applyParameterChanges() {
+                if (isInitial) {
+                  const changedParams: Record<string, string> = {}
+                  for (const [name, displayVal] of Object.entries(finalDisplayValues)) {
+                    const original = originalExpressions[name]
+                    const isScaleModeChange = name === "ScaleLengthTreb" && scaleModeChanged
+                    if (original === undefined || !expressionsEqual(displayVal, original) || isScaleModeChange) {
+                      changedParams[name] = buildExpression(name, displayVal)
+                    }
                   }
-                }
-                if (Object.keys(changed).length > 0 || creates.length > 0) {
-                  sendToPython("APPLY_PARAMS", { updates: changed, creates })
+                  setHistory([])
+                  setHistoryIndex(-1)
+                  sendToPython("APPLY_PARAMS", { updates: changedParams, creates })
+                } else {
+                  const changed: Record<string, string> = {}
+                  for (const [name, displayVal] of Object.entries(finalDisplayValues)) {
+                    const original = originalExpressions[name]
+                    const isScaleModeChange = name === "ScaleLengthTreb" && scaleModeChanged
+                    if (original !== undefined && (!expressionsEqual(displayVal, original) || isScaleModeChange)) {
+                      changed[name] = buildExpression(name, displayVal)
+                    }
+                  }
+                  if (Object.keys(changed).length > 0 || creates.length > 0) {
+                    sendToPython("APPLY_PARAMS", { updates: changed, creates })
+                  }
                 }
               }
             }}
@@ -2056,7 +2213,7 @@ export function ParametersPage({
                   ? `Import & Apply ${initialChangeCount} change${initialChangeCount !== 1 ? "s" : ""}`
                   : "Import & Apply"
                 : hasChanges || hasPending
-                  ? `Apply ${modifiedCount + pendingParams.length} change${(modifiedCount + pendingParams.length) !== 1 ? "s" : ""}${hasPending ? ` (${pendingParams.length} new)` : ""}`
+                  ? `Apply ${totalChangeCount} change${totalChangeCount !== 1 ? "s" : ""}${hasPending ? ` (${pendingParams.length} new)` : ""}`
                   : "Apply to Model"}
           </Button>
 
