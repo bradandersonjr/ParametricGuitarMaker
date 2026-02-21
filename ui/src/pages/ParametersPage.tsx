@@ -949,7 +949,7 @@ export function ParametersPage({
               : isInitial
                 ? initialChangeCount > 0
                   ? `Import & Apply ${initialChangeCount} change${initialChangeCount !== 1 ? "s" : ""}`
-                  : "Quick Load Default"
+                  : "Quick-Load Default"
                 : hasChanges || hasPending
                   ? `Apply ${modifiedCount + pendingParams.length} change${(modifiedCount + pendingParams.length) !== 1 ? "s" : ""}${hasPending ? ` (${pendingParams.length} new)` : ""}`
                   : "Apply to Model"}
