@@ -25,17 +25,17 @@ export function ExtraParamRow({
   return (
     <>
       <div
-        className="px-2 py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors group/row flex items-center gap-2"
+        className="py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors group/row flex items-center"
       >
         <button
           onClick={() => setEditOpen(true)}
-          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all"
+          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all px-2"
           title="Edit parameter"
         >
           <Pen size={14} />
         </button>
         <div
-          className="flex-1 cursor-pointer"
+          className="flex-1 cursor-pointer pr-2"
           onClick={() => setEditOpen(true)}
         >
           <div className="flex items-center gap-3">

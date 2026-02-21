@@ -37,16 +37,16 @@ export function SchemaParamRow({
   return (
     <>
       <div
-        className="px-2 py-2 rounded-lg hover:bg-muted/20 transition-colors group/row flex items-center gap-2"
+        className="py-2 rounded-lg hover:bg-muted/20 transition-colors group/row flex items-center"
       >
         <button
           onClick={() => setModalOpen(true)}
-          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all"
+          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all px-2"
           title="Edit parameter"
         >
           <Pen size={14} />
         </button>
-        <div className="flex-1">
+        <div className="flex-1 pr-2">
           <div
             className="cursor-pointer"
             onClick={() => setModalOpen(true)}
