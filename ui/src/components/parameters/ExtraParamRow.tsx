@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { Pen } from "lucide-react"
 import { filterNumericInput } from "./helpers"
 import { ParamInfoModal } from "./ParamInfoModal"
 import type { ExtraParamRowProps } from "./types"
@@ -24,19 +24,27 @@ export function ExtraParamRow({
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            className="px-2 py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors cursor-pointer"
-            onClick={() => setEditOpen(true)}
-          >
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground">{param.name}</p>
-            {param.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{param.description}</p>
-            )}
-          </div>
+      <div
+        className="px-2 py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors group/row flex items-center gap-2"
+      >
+        <button
+          onClick={() => setEditOpen(true)}
+          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all"
+          title="Edit parameter"
+        >
+          <Pen size={14} />
+        </button>
+        <div
+          className="flex-1 cursor-pointer"
+          onClick={() => setEditOpen(true)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground">{param.name}</p>
+              {param.description && (
+                <p className="text-xs text-muted-foreground mt-0.5">{param.description}</p>
+              )}
+            </div>
           <div
             className="flex items-center gap-1 shrink-0"
             onClick={(e) => e.stopPropagation()}
@@ -62,11 +70,9 @@ export function ExtraParamRow({
               {unit}
             </span>
           </div>
-        </div>
           </div>
-        </TooltipTrigger>
-        <TooltipContent>Click to edit parameter</TooltipContent>
-      </Tooltip>
+        </div>
+      </div>
       {editOpen && (
         <ParamInfoModal
           param={param}

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Minus } from "lucide-react"
+import { Plus, Minus, Pen } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { filterNumericInput } from "./helpers"
 import { ParamInfoModal } from "./ParamInfoModal"
@@ -36,21 +36,30 @@ export function SchemaParamRow({
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
+      <div
+        className="px-2 py-2 rounded-lg hover:bg-muted/20 transition-colors group/row flex items-center gap-2"
+      >
+        <button
+          onClick={() => setModalOpen(true)}
+          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all"
+          title="Edit parameter"
+        >
+          <Pen size={14} />
+        </button>
+        <div className="flex-1">
           <div
-            className="px-2 py-2 rounded-lg hover:bg-muted/20 transition-colors cursor-pointer group/row"
+            className="cursor-pointer"
             onClick={() => setModalOpen(true)}
           >
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground mb-0.5">{label}</p>
-            <p className="text-xs text-muted-foreground">{param.description}</p>
-          </div>
-          <div
-            className="flex items-center justify-center gap-1 shrink-0 w-[130px]"
-            onClick={(e) => e.stopPropagation()}
-          >
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground mb-0.5">{label}</p>
+                <p className="text-xs text-muted-foreground">{param.description}</p>
+              </div>
+              <div
+                className="flex items-center justify-center gap-1 shrink-0 w-[130px]"
+                onClick={(e) => e.stopPropagation()}
+              >
             {!displayUnit ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -119,13 +128,12 @@ export function SchemaParamRow({
                 {displayUnit}
               </span>
             )}
+              </div>
+            </div>
           </div>
+          {hasError && <div className="text-xs text-red-500 px-2 mt-1">{errorMessage}</div>}
         </div>
-        {hasError && <div className="text-xs text-red-500 px-2 mt-1">{errorMessage}</div>}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>Click to edit</TooltipContent>
-      </Tooltip>
+      </div>
       {modalOpen && (
         <ParamInfoModal
           param={param}
