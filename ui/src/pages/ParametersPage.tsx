@@ -78,6 +78,7 @@ export function ParametersPage({
 
   const previousModeRef = useRef<string | undefined>(undefined)
   const previousDocUnitRef = useRef<string | undefined>(undefined)
+  const radiusCacheRef = useRef<{ nutRadius: string | null; heelRadius: string | null }>({ nutRadius: null, heelRadius: null })
 
   const isInitial = !payload?.hasFingerprint
   const documentUnit = payload?.documentUnit ?? "in"
@@ -258,6 +259,12 @@ export function ParametersPage({
       setOriginalScaleMode(derivedScaleMode)
       setOriginalRadiusMode(derivedRadiusMode)
       setBaselineSet(true)
+      // Only clear cache when baseline is compound (nothing to restore).
+      // When baseline is flat/straight, keep the cache so switching back
+      // to compound can still restore the pre-flat/pre-straight values.
+      if (derivedRadiusMode === "compound") {
+        radiusCacheRef.current = { nutRadius: null, heelRadius: null }
+      }
     }
     previousDocUnitRef.current = documentUnit
     setParameterMap(paramMap)
@@ -319,8 +326,13 @@ export function ParametersPage({
     if (radiusMode === "straight") {
       next["HeelRadius"] = displayValues["NutRadius"] ?? ""
     }
+    if (radiusMode === "flat") {
+      const flatSentinel = isMetricUnit(documentUnit) ? "254000" : "10000"
+      next["NutRadius"] = flatSentinel
+      next["HeelRadius"] = flatSentinel
+    }
     return next
-  }, [displayValues, scaleMode, radiusMode])
+  }, [displayValues, scaleMode, radiusMode, documentUnit])
 
   const modifiedCount = payload
     ? Object.entries(finalDisplayValues).filter(([name, val]) => {
@@ -459,6 +471,7 @@ export function ParametersPage({
     setDisplayValues({ ...originalExpressions })
     setScaleMode(originalScaleMode)
     setRadiusMode(originalRadiusMode)
+    radiusCacheRef.current = { nutRadius: null, heelRadius: null }
     setHistory([])
     setHistoryIndex(-1)
   }
@@ -544,6 +557,41 @@ export function ParametersPage({
               value={radiusMode}
               onValueChange={(value: string) => {
                 if (value === "compound" || value === "straight" || value === "flat") {
+                  const prevMode = radiusMode
+
+                  // Cache compound values when leaving compound mode
+                  if (prevMode === "compound" && value !== "compound") {
+                    radiusCacheRef.current = {
+                      nutRadius: displayValues["NutRadius"] ?? null,
+                      heelRadius: displayValues["HeelRadius"] ?? null,
+                    }
+                  }
+
+                  // Cache NutRadius when leaving straight mode (only if no compound cache yet)
+                  if (prevMode === "straight" && value !== "straight" && !radiusCacheRef.current.nutRadius) {
+                    radiusCacheRef.current = {
+                      nutRadius: displayValues["NutRadius"] ?? null,
+                      heelRadius: null,
+                    }
+                  }
+
+                  // Update displayValues for mode transitions
+                  if (value === "compound") {
+                    const cached = radiusCacheRef.current
+                    if (cached.nutRadius || cached.heelRadius) {
+                      setDisplayValues(prev => ({
+                        ...prev,
+                        ...(cached.nutRadius ? { NutRadius: cached.nutRadius } : {}),
+                        ...(cached.heelRadius ? { HeelRadius: cached.heelRadius } : {}),
+                      }))
+                    }
+                  } else if (value === "straight" && prevMode === "flat") {
+                    const cached = radiusCacheRef.current
+                    if (cached.nutRadius) {
+                      setDisplayValues(prev => ({ ...prev, NutRadius: cached.nutRadius! }))
+                    }
+                  }
+
                   setRadiusMode(value)
                 }
               }}
