@@ -16,7 +16,20 @@ PREFS_FILE = os.path.join(config.ADDIN_ROOT, 'preferences.json')
 DEFAULTS: Dict[str, Any] = {
     'hideBetaDisclaimer': False,
     'reportsPrecision': 4,
-    'groupOrder': None,
+    'groupOrder': [
+        'general',
+        'body',
+        'headstock',
+        'neck',
+        'fretboard',
+        'nut',
+        'heel',
+        'frets',
+        'fret-markers',
+        'scallops',
+        'fallaway',
+        'strings',
+    ],
 }
 
 
