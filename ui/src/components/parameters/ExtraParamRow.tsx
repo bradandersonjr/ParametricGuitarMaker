@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { filterNumericInput } from "./helpers"
 import { ParamInfoModal } from "./ParamInfoModal"
 import type { ExtraParamRowProps } from "./types"
@@ -23,11 +24,12 @@ export function ExtraParamRow({
 
   return (
     <>
-      <div
-        className="px-2 py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors cursor-pointer"
-        onClick={() => setEditOpen(true)}
-        title="Click to edit parameter"
-      >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="px-2 py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors cursor-pointer"
+            onClick={() => setEditOpen(true)}
+          >
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-foreground">{param.name}</p>
@@ -61,7 +63,10 @@ export function ExtraParamRow({
             </span>
           </div>
         </div>
-      </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>Click to edit parameter</TooltipContent>
+      </Tooltip>
       {editOpen && (
         <ParamInfoModal
           param={param}

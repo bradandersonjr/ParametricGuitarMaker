@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { ChevronDown, ChevronRight, LayoutGrid, X, Plus, AlertCircle, GripVertical } from "lucide-react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { expressionsEqual } from "./helpers"
 import { SchemaParamRow } from "./SchemaParamRow"
 import { ExtraParamRow } from "./ExtraParamRow"
@@ -157,16 +158,20 @@ export function GroupSection({
             </span>
           )}
           {!disabled && showAddButton && (
-            <span
-              role="button"
-              aria-label={`Add parameter to ${group.label}`}
-              title={`Add parameter to ${group.label}`}
-              className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
-              onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
-            >
-              <Plus size={11} />
-              New Parameter
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  role="button"
+                  aria-label={`Add parameter to ${group.label}`}
+                  className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
+                  onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
+                >
+                  <Plus size={11} />
+                  New Parameter
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{`Add parameter to ${group.label}`}</TooltipContent>
+            </Tooltip>
           )}
         </button>
       </div>
@@ -257,13 +262,17 @@ export function GroupSection({
                       {unitDisplay}
                     </span>
                   </div>
-                  <button
-                    onClick={() => onRemovePendingParam(p.id)}
-                    className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-muted-foreground hover:text-red-600 transition-colors shrink-0"
-                    title="Remove staged parameter"
-                  >
-                    <X size={13} />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onRemovePendingParam(p.id)}
+                        className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-muted-foreground hover:text-red-600 transition-colors shrink-0"
+                      >
+                        <X size={13} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Remove staged parameter</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             )
@@ -333,16 +342,20 @@ export function CustomCategorySection({
         <span className="text-xs text-muted-foreground font-normal">
           ({filteredParams.length} parameter{filteredParams.length !== 1 ? "s" : ""})
         </span>
-        <span
-          role="button"
-          aria-label={`Add parameter to ${category.label}`}
-          title={`Add parameter to ${category.label}`}
-          className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
-          onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
-        >
-          <Plus size={11} />
-          New Parameter
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              role="button"
+              aria-label={`Add parameter to ${category.label}`}
+              className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
+              onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
+            >
+              <Plus size={11} />
+              New Parameter
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{`Add parameter to ${category.label}`}</TooltipContent>
+        </Tooltip>
       </button>
       {open && (
         <div className="px-3 py-3 space-y-2">

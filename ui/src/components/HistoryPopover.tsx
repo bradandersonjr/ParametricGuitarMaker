@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from "react"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 export interface HistoryEntry {
   name: string
@@ -153,17 +154,20 @@ export function HistoryPopover({
           </div>
           <div className="space-y-1">
             {items.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSelect(idx)}
-                className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/50 transition-colors focus:outline-none focus:bg-muted"
-                title={`Revert to ${item.newVal}`}
-              >
-                <div className="font-medium text-foreground">{item.name}</div>
-                <div className="text-muted-foreground text-[11px]">
-                  {item.oldVal} → {item.newVal}
-                </div>
-              </button>
+              <Tooltip key={idx}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleSelect(idx)}
+                    className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/50 transition-colors focus:outline-none focus:bg-muted"
+                  >
+                    <div className="font-medium text-foreground">{item.name}</div>
+                    <div className="text-muted-foreground text-[11px]">
+                      {item.oldVal} → {item.newVal}
+                    </div>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{`Revert to ${item.newVal}`}</TooltipContent>
+              </Tooltip>
             ))}
           </div>
         </div>

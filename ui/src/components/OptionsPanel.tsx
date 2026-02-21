@@ -6,6 +6,7 @@ import {
     DrawerTrigger,
     DrawerClose,
 } from "@/components/ui/drawer"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { sendToPython, addMessageHandler } from "@/lib/fusion-bridge"
 import type { GroupState } from "@/types"
 import {
@@ -237,14 +238,18 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
                 <Layers size={14} className="text-muted-foreground shrink-0" />
                 <span className="text-sm font-bold font-heading flex-1">Customization Options</span>
-                <button
-                    onClick={refreshGroupStates}
-                    disabled={loading}
-                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
-                    title="Refresh"
-                >
-                    <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-                </button>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            onClick={refreshGroupStates}
+                            disabled={loading}
+                            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                        >
+                            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh</TooltipContent>
+                </Tooltip>
                 <DrawerClose asChild>
                     <button className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <X size={14} />
@@ -287,23 +292,29 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
                                 ].join(" ")}>
                                     {item.label}
                                 </span>
-                                <button
-                                    onClick={() => handleToggle(item)}
-                                    disabled={isApplying || !key}
-                                    className={[
-                                        "flex items-center justify-center rounded-md transition-all duration-200 shrink-0 w-8 h-7",
-                                        isApplying ? "opacity-40 cursor-wait" : !key ? "opacity-30" : "cursor-pointer",
-                                        isActive
-                                            ? "text-emerald-500 dark:text-emerald-400 hover:bg-emerald-500/10"
-                                            : "text-muted-foreground/40 hover:bg-accent hover:text-muted-foreground",
-                                    ].join(" ")}
-                                    title={!key ? "Group not found" : isActive ? "Suppress group" : "Enable group"}
-                                >
-                                    {isApplying
-                                        ? <RefreshCw size={12} className="animate-spin" />
-                                        : isActive ? <ToggleRight size={15} /> : <ToggleLeft size={15} />
-                                    }
-                                </button>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => handleToggle(item)}
+                                            disabled={isApplying || !key}
+                                            className={[
+                                                "flex items-center justify-center rounded-md transition-all duration-200 shrink-0 w-8 h-7",
+                                                isApplying ? "opacity-40 cursor-wait" : !key ? "opacity-30" : "cursor-pointer",
+                                                isActive
+                                                    ? "text-emerald-500 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                                    : "text-muted-foreground/40 hover:bg-accent hover:text-muted-foreground",
+                                            ].join(" ")}
+                                        >
+                                            {isApplying
+                                                ? <RefreshCw size={12} className="animate-spin" />
+                                                : isActive ? <ToggleRight size={15} /> : <ToggleLeft size={15} />
+                                            }
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {!key ? "Group not found" : isActive ? "Suppress group" : "Enable group"}
+                                    </TooltipContent>
+                                </Tooltip>
                             </div>
                         )
                     })
@@ -346,15 +357,19 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
     return (
         <Drawer open={isOpen} onOpenChange={handleOpenChange} direction="right">
             <DrawerTrigger asChild>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    title="Customization Options"
-                >
-                    <Layers size={14} />
-                    <span className="hidden sm:inline">Options</span>
-                </Button>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                        >
+                            <Layers size={14} />
+                            <span className="hidden sm:inline">Options</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Customization Options</TooltipContent>
+                </Tooltip>
             </DrawerTrigger>
             <DrawerContent className="flex flex-col w-[360px] p-0">
                 {drawerContent}

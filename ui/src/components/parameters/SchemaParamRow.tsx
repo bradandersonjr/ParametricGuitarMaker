@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Plus, Minus } from "lucide-react"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { filterNumericInput } from "./helpers"
 import { ParamInfoModal } from "./ParamInfoModal"
 import type { SchemaParamRowProps } from "./types"
@@ -35,11 +36,12 @@ export function SchemaParamRow({
 
   return (
     <>
-      <div
-        className="px-2 py-2 rounded-lg hover:bg-muted/20 transition-colors cursor-pointer group/row"
-        onClick={() => setModalOpen(true)}
-        title="Click to edit"
-      >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="px-2 py-2 rounded-lg hover:bg-muted/20 transition-colors cursor-pointer group/row"
+            onClick={() => setModalOpen(true)}
+          >
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-foreground mb-0.5">{label}</p>
@@ -50,21 +52,25 @@ export function SchemaParamRow({
             onClick={(e) => e.stopPropagation()}
           >
             {!displayUnit ? (
-              <button
-                onClick={() => {
-                  if (!editStartValues.hasOwnProperty(param.name)) {
-                    onFocus(param.name)
-                  }
-                  const val = parseInt(displayValue ?? "0")
-                  const newVal = Math.max(parseInt(param.min?.toString() ?? "0"), val - 1).toString()
-                  onChange(param.name, newVal)
-                  setTimeout(() => onBlur(param.name, newVal), 0)
-                }}
-                className="p-0.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Decrease"
-              >
-                <Minus size={14} />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      if (!editStartValues.hasOwnProperty(param.name)) {
+                        onFocus(param.name)
+                      }
+                      const val = parseInt(displayValue ?? "0")
+                      const newVal = Math.max(parseInt(param.min?.toString() ?? "0"), val - 1).toString()
+                      onChange(param.name, newVal)
+                      setTimeout(() => onBlur(param.name, newVal), 0)
+                    }}
+                    className="p-0.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                  >
+                    <Minus size={14} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Decrease</TooltipContent>
+              </Tooltip>
             ) : (
               <div className="w-[19px] shrink-0" />
             )}
@@ -89,21 +95,25 @@ export function SchemaParamRow({
               ].join(" ")}
             />
             {!displayUnit ? (
-              <button
-                onClick={() => {
-                  if (!editStartValues.hasOwnProperty(param.name)) {
-                    onFocus(param.name)
-                  }
-                  const val = parseInt(displayValue ?? "0")
-                  const newVal = Math.min(parseInt(param.max?.toString() ?? "999"), val + 1).toString()
-                  onChange(param.name, newVal)
-                  setTimeout(() => onBlur(param.name, newVal), 0)
-                }}
-                className="p-0.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Increase"
-              >
-                <Plus size={14} />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      if (!editStartValues.hasOwnProperty(param.name)) {
+                        onFocus(param.name)
+                      }
+                      const val = parseInt(displayValue ?? "0")
+                      const newVal = Math.min(parseInt(param.max?.toString() ?? "999"), val + 1).toString()
+                      onChange(param.name, newVal)
+                      setTimeout(() => onBlur(param.name, newVal), 0)
+                    }}
+                    className="p-0.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Increase</TooltipContent>
+              </Tooltip>
             ) : (
               <span className="w-[19px] shrink-0 text-xs text-muted-foreground text-center">
                 {displayUnit}
@@ -112,7 +122,10 @@ export function SchemaParamRow({
           </div>
         </div>
         {hasError && <div className="text-xs text-red-500 px-2 mt-1">{errorMessage}</div>}
-      </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>Click to edit</TooltipContent>
+      </Tooltip>
       {modalOpen && (
         <ParamInfoModal
           param={param}
