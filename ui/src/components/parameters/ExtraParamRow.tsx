@@ -29,13 +29,13 @@ export function ExtraParamRow({
       >
         <button
           onClick={() => setEditOpen(true)}
-          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all"
+          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all pr-2"
           title="Edit parameter"
         >
           <Pen size={14} />
         </button>
         <div
-          className="flex-1 cursor-pointer pr-2"
+          className="flex-1 cursor-pointer"
           onClick={() => setEditOpen(true)}
         >
           <div className="flex items-center gap-3">
