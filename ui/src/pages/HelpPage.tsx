@@ -93,6 +93,43 @@ export function HelpPage() {
             </div>
           </section>
 
+          {/* Radius Mode */}
+          <section>
+            <h2 className="text-sm font-semibold font-heading mb-2">Fretboard Radius</h2>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p>
+                The Radius dropdown on the Parameters page controls how the fretboard curves from nut to heel.
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><span className="font-medium text-foreground">Compound</span> — Independent radii at nut and heel (most flexible, allows curved transitions)</li>
+                <li><span className="font-medium text-foreground">Straight</span> — Nut and heel radii are linked; heel follows nut value (classic two-point setup)</li>
+                <li><span className="font-medium text-foreground">Flat</span> — Both radii become flat (10000" / 254000 mm, effectively no curve)</li>
+              </ul>
+              <p className="pt-2">
+                When you change the radius mode, the inputs preview the new mode immediately. Your previous values are cached, so switching back to a previous mode restores those values. Changes are applied to Fusion when you click the Apply button.
+              </p>
+            </div>
+          </section>
+
+          {/* Options Panel */}
+          <section>
+            <h2 className="text-sm font-semibold font-heading mb-2">Options Panel</h2>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p>
+                The Options panel (accessible from the Parameters page) provides quick toggles for common fretboard features.
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><span className="font-medium text-foreground">Zero Fret</span> — Toggles the zero fret (open-string reference fret at the nut)</li>
+                <li><span className="font-medium text-foreground">Blind Frets</span> — Toggles frets that don't extend all the way across the fretboard</li>
+                <li><span className="font-medium text-foreground">Heel Curve</span> — Toggles a separate radius curve at the heel region for smoother transitions</li>
+                <li><span className="font-medium text-foreground">Marker Holes</span> — Swap between marker hole position sets (Top-Circles or Top-Offset)</li>
+              </ul>
+              <p className="pt-2">
+                Each toggle can be switched independently and applies immediately to the Fusion design on click.
+              </p>
+            </div>
+          </section>
+
           {/* Timeline */}
           <section>
             <h2 className="text-sm font-semibold font-heading mb-2">Timeline Panel</h2>
@@ -143,6 +180,10 @@ export function HelpPage() {
               <div>
                 <p className="font-medium text-foreground mb-1">Timeline changes not showing</p>
                 <p>Remember to click Submit in the Timeline panel — toggling the eye icon is a local preview only and doesn't update the Fusion model until submitted.</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Radius mode values disappeared</p>
+                <p>When you switch radius modes (e.g. Compound to Flat), your previous values are cached and restored if you switch back. However, if you apply the change to Fusion and then want to restore previous values, click Apply again while in the target mode — the backend cache will restore the saved values.</p>
               </div>
             </div>
           </section>
