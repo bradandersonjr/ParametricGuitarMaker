@@ -41,7 +41,7 @@ export function SchemaParamRow({
       >
         <button
           onClick={() => setModalOpen(true)}
-          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all px-2"
+          className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-all"
           title="Edit parameter"
         >
           <Pen size={14} />
