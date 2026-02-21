@@ -16,8 +16,6 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 import { AlertCircle } from "lucide-react"
 
-declare const __APP_VERSION__: string
-
 export function BetaDisclaimer({
   onAccept,
 }: {
@@ -57,7 +55,7 @@ export function BetaDisclaimer({
           htmlFor="dont-show-again"
           className="text-xs text-muted-foreground cursor-pointer select-none"
         >
-          Don't show this again
+          Don't show again for this session
         </label>
       </div>
 

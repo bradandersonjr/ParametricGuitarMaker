@@ -1,11 +1,11 @@
 """
-User preferences persistence — synced between frontend localStorage and filesystem.
+User preferences persistence - synced between frontend localStorage and filesystem.
 Stores user settings like group order, reports precision, etc.
 """
 
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from .. import config
 from . import fusionAddInUtils as futil
 
@@ -14,10 +14,27 @@ PREFS_FILE = os.path.join(config.ADDIN_ROOT, 'preferences.json')
 
 # Default preferences structure
 DEFAULTS: Dict[str, Any] = {
-    'betaDisclaimerDismissedVersion': None,
+    'hideBetaDisclaimer': False,
     'reportsPrecision': 4,
     'groupOrder': None,
 }
+
+
+def _normalize_preferences(stored: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize legacy and current preference keys into the current schema."""
+    normalized = DEFAULTS.copy()
+
+    if not isinstance(stored, dict):
+        return normalized
+
+    normalized.update(stored)
+
+    legacy_dismissed_version = stored.get('betaDisclaimerDismissedVersion')
+    if isinstance(legacy_dismissed_version, str) and legacy_dismissed_version.strip():
+        normalized['hideBetaDisclaimer'] = True
+
+    normalized.pop('betaDisclaimerDismissedVersion', None)
+    return normalized
 
 
 def load_preferences() -> Dict[str, Any]:
@@ -39,11 +56,12 @@ def load_preferences() -> Dict[str, Any]:
             stored = json.load(f)
 
         if isinstance(stored, dict):
-            # Merge stored with defaults to handle new keys gracefully
-            prefs.update(stored)
+            prefs = _normalize_preferences(stored)
             futil.log(f'Loaded preferences from {PREFS_FILE}', force_console=True)
+            # Persist normalized format so legacy keys are cleaned up on disk.
+            save_preferences(prefs)
         else:
-            futil.log(f'Preferences file has invalid format, using defaults',
+            futil.log('Preferences file has invalid format, using defaults',
                       force_console=True)
             save_preferences(prefs)
     except json.JSONDecodeError as e:
@@ -71,8 +89,9 @@ def save_preferences(prefs: Dict[str, Any]) -> bool:
         # Ensure parent directory exists
         os.makedirs(os.path.dirname(PREFS_FILE), exist_ok=True)
 
+        normalized = _normalize_preferences(prefs)
         with open(PREFS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(prefs, f, indent=2)
+            json.dump(normalized, f, indent=2)
 
         futil.log(f'Saved preferences to {PREFS_FILE}', force_console=True)
         return True

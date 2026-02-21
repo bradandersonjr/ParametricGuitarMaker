@@ -15,34 +15,7 @@ from ...lib import fusionAddInUtils as futil
 from ... import config
 from ...lib import parameter_bridge
 from ...lib import preferences
-
-# ── Deferred apply event ─────────────────────────────────────────────
-_APPLY_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_applyParams'
-_pending_apply = None   # param_values dict waiting for deferred execution
-
-# ── Deferred timeline event ──────────────────────────────────────────
-_TIMELINE_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_timelineOp'
-_pending_timeline_op = None  # {'action': str, 'data': dict}
-
-# ── Deferred hole-position event ──────────────────────────────────────
-_HOLE_POSITION_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_holePositionOp'
-_pending_hole_op = None  # {'holeName': str, 'selectionSetName': str}
-
-# ── Deferred zero-fret event ──────────────────────────────────────────
-_ZERO_FRET_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_zeroFretOp'
-_pending_zero_fret_op = None  # {'enabled': bool}
-
-# ── Deferred blind-frets event ────────────────────────────────────────
-_BLIND_FRETS_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_blindFretsOp'
-_pending_blind_frets_op = None  # {'enabled': bool}
-
-# ── Deferred radius-mode event ────────────────────────────────────────────
-_RADIUS_MODE_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_radiusModeOp'
-_pending_radius_mode_op = None  # {'mode': str}
-
-# ── Deferred heel-curve event ─────────────────────────────────────────
-_HEEL_CURVE_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_heelCurveOp'
-_pending_heel_curve_op = None  # {'enabled': bool}
+from ...lib.deferred_ops import make_deferred_op
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -85,17 +58,79 @@ local_handlers = []
 _pending_payload = None         # Payload waiting for JS 'ready' signal
 _owner_document = None          # The document that owns the palette
 
+# ── Deferred apply event (unique logic — not factory-generated) ─────
+_APPLY_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_applyParams'
+_pending_apply = None
+
+# ── Deferred timeline event (unique logic — not factory-generated) ──
+_TIMELINE_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_timelineOp'
+_pending_timeline_op = None
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Factory-generated deferred operations
+# ═══════════════════════════════════════════════════════════════════
+
+def _hole_handler(design, op):
+    return parameter_bridge.remap_hole_to_selection_set(
+        design, op.get('holeName', ''), op.get('selectionSetName', ''))
+
+def _zero_fret_handler(design, op):
+    return parameter_bridge.toggle_zero_fret(design, op.get('enabled', False))
+
+def _blind_frets_handler(design, op):
+    return parameter_bridge.toggle_blind_frets(design, op.get('enabled', False))
+
+def _radius_mode_handler(design, op):
+    return parameter_bridge.set_radius_mode(design, op)
+
+def _heel_curve_handler(design, op):
+    return parameter_bridge.toggle_heel_curve(design, op.get('enabled', False))
+
+
+# Each make_deferred_op returns (event_id, pending_holder, queue_fn, handler_fn)
+_HOLE_EVENT_ID, _hole_pending, _queue_hole_op, _deferred_hole_handler = make_deferred_op(
+    'holePositionOp', 'hole remap', _hole_handler, 'HOLE_POSITION_RESULT')
+
+_ZERO_FRET_EVENT_ID, _zf_pending, _queue_zero_fret_op, _deferred_zero_fret_handler = make_deferred_op(
+    'zeroFretOp', 'zero-fret toggle', _zero_fret_handler, 'ZERO_FRET_RESULT')
+
+_BLIND_FRETS_EVENT_ID, _bf_pending, _queue_blind_frets_op, _deferred_blind_frets_handler = make_deferred_op(
+    'blindFretsOp', 'blind-frets toggle', _blind_frets_handler, 'BLIND_FRETS_RESULT')
+
+_RADIUS_MODE_EVENT_ID, _rm_pending, _queue_radius_mode_op, _deferred_radius_mode_handler = make_deferred_op(
+    'radiusModeOp', 'radius mode change', _radius_mode_handler, 'RADIUS_MODE_RESULT')
+
+_HEEL_CURVE_EVENT_ID, _hc_pending, _queue_heel_curve_op, _deferred_heel_curve_handler = make_deferred_op(
+    'heelCurveOp', 'heel curve toggle', _heel_curve_handler, 'HEEL_CURVE_RESULT')
+
+# All factory-generated event IDs for bulk registration/unregistration
+_FACTORY_EVENTS = [
+    (_HOLE_EVENT_ID, _deferred_hole_handler),
+    (_ZERO_FRET_EVENT_ID, _deferred_zero_fret_handler),
+    (_BLIND_FRETS_EVENT_ID, _deferred_blind_frets_handler),
+    (_RADIUS_MODE_EVENT_ID, _deferred_radius_mode_handler),
+    (_HEEL_CURVE_EVENT_ID, _deferred_heel_curve_handler),
+]
+
+# Palette action → queue function mapping for factory-generated ops
+_ACTION_HANDLERS = {
+    'REMAP_HOLE_TO_SELECTION_SET': _queue_hole_op,
+    'TOGGLE_ZERO_FRET': _queue_zero_fret_op,
+    'TOGGLE_BLIND_FRETS': _queue_blind_frets_op,
+    'SET_RADIUS_MODE': _queue_radius_mode_op,
+    'TOGGLE_HEEL_CURVE': _queue_heel_curve_op,
+}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Start / Stop
+# ═══════════════════════════════════════════════════════════════════
+
 def start(is_startup=False):
     """Register the toolbar button when the add-in starts."""
-    # Reset beta-disclaimer opt-out on every add-in start.
-    # This makes stop/run always show the disclaimer again.
-    try:
-        preferences.update_preferences({'betaDisclaimerDismissedVersion': None})
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Failed to reset beta disclaimer preference on start: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
 
-    # Clean up any stale control/definition from a previous run that didn't stop cleanly.
+    # Clean up any stale control/definition from a previous run.
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
 
@@ -117,33 +152,17 @@ def start(is_startup=False):
     # Listen for document activation changes
     futil.add_handler(app.documentActivated, on_document_activated)
 
-    # Register custom event for deferred parameter apply
+    # Register manual deferred events
     apply_event = app.registerCustomEvent(_APPLY_EVENT_ID)
     futil.add_handler(apply_event, _deferred_apply_handler)
 
-    # Register custom event for deferred timeline operations
     timeline_event = app.registerCustomEvent(_TIMELINE_EVENT_ID)
     futil.add_handler(timeline_event, _deferred_timeline_handler)
 
-    # Register custom event for deferred hole-position operations
-    hole_event = app.registerCustomEvent(_HOLE_POSITION_EVENT_ID)
-    futil.add_handler(hole_event, _deferred_hole_position_handler)
-
-    # Register custom event for deferred zero-fret operations
-    zero_fret_event = app.registerCustomEvent(_ZERO_FRET_EVENT_ID)
-    futil.add_handler(zero_fret_event, _deferred_zero_fret_handler)
-
-    # Register custom event for deferred blind-frets operations
-    blind_frets_event = app.registerCustomEvent(_BLIND_FRETS_EVENT_ID)
-    futil.add_handler(blind_frets_event, _deferred_blind_frets_handler)
-
-    # Register custom event for deferred radius-mode operations
-    radius_mode_event = app.registerCustomEvent(_RADIUS_MODE_EVENT_ID)
-    futil.add_handler(radius_mode_event, _deferred_radius_mode_handler)
-
-    # Register custom event for deferred heel-curve operations
-    heel_curve_event = app.registerCustomEvent(_HEEL_CURVE_EVENT_ID)
-    futil.add_handler(heel_curve_event, _deferred_heel_curve_handler)
+    # Register all factory-generated deferred events
+    for event_id, handler_fn in _FACTORY_EVENTS:
+        evt = app.registerCustomEvent(event_id)
+        futil.add_handler(evt, handler_fn)
 
     # Show welcome message when manually run, but not on Fusion startup
     if not is_startup:
@@ -176,16 +195,18 @@ def stop():
     if palette:
         palette.deleteMe()
 
+    # Unregister manual deferred events
     app.unregisterCustomEvent(_APPLY_EVENT_ID)
     app.unregisterCustomEvent(_TIMELINE_EVENT_ID)
-    app.unregisterCustomEvent(_HOLE_POSITION_EVENT_ID)
-    app.unregisterCustomEvent(_ZERO_FRET_EVENT_ID)
-    app.unregisterCustomEvent(_BLIND_FRETS_EVENT_ID)
-    app.unregisterCustomEvent(_RADIUS_MODE_EVENT_ID)
-    app.unregisterCustomEvent(_HEEL_CURVE_EVENT_ID)
+
+    # Unregister all factory-generated deferred events
+    for event_id, _ in _FACTORY_EVENTS:
+        app.unregisterCustomEvent(event_id)
 
 
-# ── Event handlers ──────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# Command event handlers
+# ═══════════════════════════════════════════════════════════════════
 
 def command_created(args: adsk.core.CommandCreatedEventArgs):
     """Called when the command button is clicked."""
@@ -206,9 +227,6 @@ def command_execute(args: adsk.core.CommandEventArgs):
             ui.messageBox('A Fusion Design must be active to use Parametric Guitar: Fretboard Maker.')
             return
 
-        # ── Build payload ────────────────────────────────────────────────
-        # If the fingerprint parameter exists, this design was created with the app
-        # — go straight to live mode. Otherwise show schema defaults for first-time import.
         fingerprint = parameter_bridge.get_fingerprint(design)
         if fingerprint is not None:
             futil.log(f'{CMD_NAME}: Design fingerprint detected — loading live parameters')
@@ -221,18 +239,27 @@ def command_execute(args: adsk.core.CommandEventArgs):
             ui.messageBox('Failed to build parameter payload. Check the schema file.')
             return
 
-        # ── Show the palette ────────────────────────────────────────────
         _show_palette(payload)
     except Exception as e:
         futil.log(f'{CMD_NAME}: command_execute error: {e}', adsk.core.LogLevels.ErrorLogLevel)
         ui.messageBox(f'Error opening palette: {str(e)}', CMD_NAME)
 
 
+def command_destroy(args: adsk.core.CommandEventArgs):
+    """Clean up local handlers when the command ends."""
+    futil.log(f'{CMD_NAME}: Command Destroy')
+    global local_handlers
+    local_handlers = []
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Palette lifecycle
+# ═══════════════════════════════════════════════════════════════════
+
 def _show_palette(payload):
     """Create or show the palette and send parameter data."""
     global _pending_payload, _owner_document
 
-    # Track which document owns this palette
     design = adsk.fusion.Design.cast(app.activeProduct)
     if design:
         _owner_document = design.parentDocument
@@ -258,17 +285,14 @@ def _show_palette(payload):
     else:
         palette.isVisible = True
 
-    # Dock at left if floating
     if palette.dockingState == adsk.core.PaletteDockingStates.PaletteDockStateFloating:
         palette.dockingState = adsk.core.PaletteDockingStates.PaletteDockStateLeft
 
     if is_new:
-        # HTML not loaded yet — stash payload for the 'ready' signal
         _pending_payload = payload
         futil.log(f'{CMD_NAME}: Waiting for JS ready signal...')
     else:
-        # Palette exists, JS already loaded — push preferences first, then payload.
-        # This ensures the disclaimer re-evaluates on every palette open (including stop/run).
+        palette.sendInfoToHTML('PALETTE_RESHOWN', '{}')
         _push_preferences(palette)
         _send_payload(palette, payload)
 
@@ -281,20 +305,143 @@ def _send_payload(palette, payload):
               f'({sum(len(g["parameters"]) for g in payload["groups"])} params)')
 
 
-# ── Palette event handlers ──────────────────────────────────────────
+def palette_closed(args: adsk.core.UserInterfaceGeneralEventArgs):
+    """Called when the user closes the palette."""
+    futil.log(f'{CMD_NAME}: Palette closed')
 
-def _on_open_url(data_json):
-    """Called when the UI requests opening a URL in the default browser."""
-    try:
-        data = json.loads(data_json)
-        url = data.get('url')
-        if url:
-            webbrowser.open(url)
-            futil.log(f'{CMD_NAME}: Opened URL: {url}')
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Error opening URL: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
 
+def _close_palette():
+    """Hide the palette."""
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if palette:
+        palette.isVisible = False
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Palette message router
+# ═══════════════════════════════════════════════════════════════════
+
+def palette_incoming(args: adsk.core.HTMLEventArgs):
+    """Handle messages from the JS palette UI."""
+    action = args.action
+    futil.log(f'{CMD_NAME}: Palette incoming — action: {action}')
+
+    # Check factory-generated handlers first
+    if action in _ACTION_HANDLERS:
+        _ACTION_HANDLERS[action](args.data)
+        return
+
+    if action == 'ready':
+        _on_palette_ready()
+
+    elif action == 'GET_MODEL_STATE':
+        _on_refresh_request()
+
+    elif action == 'APPLY_PARAMS':
+        _on_apply_params(args.data)
+
+    elif action == 'cancel':
+        _close_palette()
+
+    elif action == 'OPEN_URL':
+        _on_open_url(args.data)
+
+    elif action == 'OPEN_TEMPLATES_FOLDER':
+        _on_open_templates_folder()
+
+    elif action == 'GET_TEMPLATES':
+        _on_get_templates()
+
+    elif action == 'SAVE_TEMPLATE':
+        _on_save_template(args.data)
+
+    elif action == 'DELETE_TEMPLATE':
+        _on_delete_template(args.data)
+
+    elif action == 'LOAD_TEMPLATE':
+        _on_load_template(args.data)
+
+    elif action == 'IMPORT_SHARE':
+        _on_import_share(args.data)
+
+    elif action == 'SET_PARAM_CATEGORY':
+        _on_set_param_category(args.data)
+
+    elif action == 'EDIT_PARAM':
+        _on_edit_param(args.data)
+
+    elif action == 'DELETE_PARAM':
+        _on_delete_param(args.data)
+
+    elif action == 'GET_GROUP_STATES':
+        _on_get_group_states()
+
+    elif action == 'APPLY_TIMELINE_CHANGES':
+        _queue_timeline_op('APPLY_TIMELINE_CHANGES', args.data)
+
+    elif action == 'GET_PREFERENCES':
+        _on_get_preferences()
+
+    elif action == 'SAVE_PREFERENCES':
+        _on_save_preferences(args.data)
+
+    elif action == 'response':
+        pass  # Fusion internal acknowledgment — ignore
+
+    else:
+        futil.log(f'{CMD_NAME}: Unknown palette action: {action}')
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Palette ready / refresh
+# ═══════════════════════════════════════════════════════════════════
+
+def _on_palette_ready():
+    """Called when the JS UI signals it has finished loading."""
+    global _pending_payload
+    _pending_payload = None
+    palette = ui.palettes.itemById(PALETTE_ID)
+    if not palette:
+        futil.log(f'{CMD_NAME}: _on_palette_ready — no palette found!')
+        return
+
+    _push_preferences(palette)
+
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    if design:
+        fingerprint = parameter_bridge.get_fingerprint(design)
+        if fingerprint is not None:
+            payload = parameter_bridge.build_ui_payload(design)
+        else:
+            payload = parameter_bridge.build_schema_payload(design)
+        if payload:
+            _send_payload(palette, payload)
+            futil.log(f'{CMD_NAME}: Sent fresh payload on palette ready')
+
+
+def _on_refresh_request():
+    """Called when the UI requests a fresh read of the model state."""
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    if not design:
+        return
+
+    fingerprint = parameter_bridge.get_fingerprint(design)
+    has_fingerprint = fingerprint is not None and fingerprint != ''
+
+    if not has_fingerprint:
+        payload = parameter_bridge.build_schema_payload(design)
+    else:
+        payload = parameter_bridge.build_ui_payload(design)
+
+    if payload:
+        palette = ui.palettes.itemById(PALETTE_ID)
+        if palette:
+            _send_payload(palette, payload)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Preferences handlers
+# ═══════════════════════════════════════════════════════════════════
 
 def _push_preferences(palette):
     """Push current preferences to the UI palette."""
@@ -302,14 +449,14 @@ def _push_preferences(palette):
         prefs = preferences.load_preferences()
         data_json = json.dumps(prefs)
         palette.sendInfoToHTML('PREFERENCES_LOADED', data_json)
-        futil.log(f'{CMD_NAME}: Pushed preferences to UI — betaDisclaimerDismissedVersion={prefs.get("betaDisclaimerDismissedVersion")}', force_console=True)
+        futil.log(f'{CMD_NAME}: Pushed preferences to UI', force_console=True)
     except Exception as e:
         futil.log(f'{CMD_NAME}: Error pushing preferences: {e}',
                   adsk.core.LogLevels.ErrorLogLevel)
 
 
 def _on_get_preferences():
-    """Send current preferences to the UI (called by JS GET_PREFERENCES)."""
+    """Send current preferences to the UI."""
     palette = ui.palettes.itemById(PALETTE_ID)
     if palette:
         _push_preferences(palette)
@@ -330,6 +477,23 @@ def _on_save_preferences(data_json):
                   adsk.core.LogLevels.ErrorLogLevel)
 
 
+# ═══════════════════════════════════════════════════════════════════
+# URL / folder handlers
+# ═══════════════════════════════════════════════════════════════════
+
+def _on_open_url(data_json):
+    """Open a URL in the default browser."""
+    try:
+        data = json.loads(data_json)
+        url = data.get('url')
+        if url:
+            webbrowser.open(url)
+            futil.log(f'{CMD_NAME}: Opened URL: {url}')
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Error opening URL: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+
+
 def _on_open_templates_folder():
     """Open the user templates folder in Windows Explorer."""
     os.makedirs(USER_TEMPLATES_DIR, exist_ok=True)
@@ -340,6 +504,10 @@ def _on_open_templates_folder():
         futil.log(f'{CMD_NAME}: Error opening templates folder: {e}',
                   adsk.core.LogLevels.ErrorLogLevel)
 
+
+# ═══════════════════════════════════════════════════════════════════
+# Template management
+# ═══════════════════════════════════════════════════════════════════
 
 def _load_template_file(filepath):
     """Load a template JSON file and return the dict, or None on error."""
@@ -352,11 +520,36 @@ def _load_template_file(filepath):
         return None
 
 
-def _build_template_list():
-    """Scan preset and user template dirs and return PUSH_TEMPLATES payload.
+def _scan_template_dir(directory, is_readonly, is_metric, schema_version):
+    """Scan a directory for .json template files and return a list of template dicts."""
+    if not os.path.isdir(directory):
+        return []
 
-    Selects unit-specific descriptions based on the active document unit.
-    """
+    templates = []
+    for fname in sorted(os.listdir(directory)):
+        if not fname.endswith('.json'):
+            continue
+        data = _load_template_file(os.path.join(directory, fname))
+        if not data:
+            continue
+
+        description = (data.get('description_metric', '') if is_metric and 'description_metric' in data
+                       else data.get('description', ''))
+
+        templates.append({
+            'id': fname[:-5],
+            'name': data.get('name', fname[:-5]),
+            'description': description,
+            'createdAt': data.get('createdAt', ''),
+            'schemaVersion': data.get('schemaVersion', schema_version),
+            'readonly': is_readonly,
+            'parameters': data.get('parameters', {}),
+        })
+    return templates
+
+
+def _build_template_list():
+    """Scan preset and user template dirs and return PUSH_TEMPLATES payload."""
     schema_version = '0.3.0'
     try:
         schema = parameter_bridge.load_schema()
@@ -365,56 +558,13 @@ def _build_template_list():
     except Exception:
         pass
 
-    # Determine the active document's unit system
     design = adsk.fusion.Design.cast(app.activeProduct)
     doc_unit = parameter_bridge.get_document_unit(design) if design else 'in'
     is_metric = parameter_bridge.is_metric_length_unit(doc_unit)
 
-    presets = []
-    if os.path.isdir(PRESETS_DIR):
-        for fname in sorted(os.listdir(PRESETS_DIR)):
-            if not fname.endswith('.json'):
-                continue
-            data = _load_template_file(os.path.join(PRESETS_DIR, fname))
-            if data:
-                # Select description based on document unit
-                if is_metric and 'description_metric' in data:
-                    description = data.get('description_metric', '')
-                else:
-                    description = data.get('description', '')
-
-                presets.append({
-                    'id': fname[:-5],
-                    'name': data.get('name', fname[:-5]),
-                    'description': description,
-                    'createdAt': data.get('createdAt', ''),
-                    'schemaVersion': data.get('schemaVersion', schema_version),
-                    'readonly': True,
-                    'parameters': data.get('parameters', {}),
-                })
-
     os.makedirs(USER_TEMPLATES_DIR, exist_ok=True)
-    user_templates = []
-    for fname in sorted(os.listdir(USER_TEMPLATES_DIR)):
-        if not fname.endswith('.json'):
-            continue
-        data = _load_template_file(os.path.join(USER_TEMPLATES_DIR, fname))
-        if data:
-            # Select description based on document unit
-            if is_metric and 'description_metric' in data:
-                description = data.get('description_metric', '')
-            else:
-                description = data.get('description', '')
-
-            user_templates.append({
-                'id': fname[:-5],
-                'name': data.get('name', fname[:-5]),
-                'description': description,
-                'createdAt': data.get('createdAt', ''),
-                'schemaVersion': data.get('schemaVersion', schema_version),
-                'readonly': False,
-                'parameters': data.get('parameters', {}),
-            })
+    presets = _scan_template_dir(PRESETS_DIR, True, is_metric, schema_version)
+    user_templates = _scan_template_dir(USER_TEMPLATES_DIR, False, is_metric, schema_version)
 
     return {'presets': presets, 'userTemplates': user_templates}
 
@@ -444,7 +594,6 @@ def _on_save_template(data_json):
                   adsk.core.LogLevels.WarningLogLevel)
         return
 
-    # Slugify: keep alphanumeric, spaces→underscores, strip rest
     slug = re.sub(r'[^\w\s-]', '', name.lower())
     slug = re.sub(r'[\s-]+', '_', slug).strip('_') or 'template'
 
@@ -459,7 +608,6 @@ def _on_save_template(data_json):
     os.makedirs(USER_TEMPLATES_DIR, exist_ok=True)
     filepath = os.path.join(USER_TEMPLATES_DIR, f'{slug}.json')
 
-    # Append a counter if the slug already exists and is a different template
     if os.path.isfile(filepath):
         existing = _load_template_file(filepath)
         if existing and existing.get('name') != name:
@@ -478,7 +626,6 @@ def _on_save_template(data_json):
                   adsk.core.LogLevels.ErrorLogLevel)
         return
 
-    # Respond with updated list
     _on_get_templates()
 
 
@@ -495,11 +642,9 @@ def _on_delete_template(data_json):
     if not template_id:
         return
 
-    # Sanitize: strip path separators to prevent traversal
     safe_id = os.path.basename(template_id)
     filepath = os.path.join(USER_TEMPLATES_DIR, f'{safe_id}.json')
 
-    # Verify the resolved path is inside USER_TEMPLATES_DIR
     if not os.path.abspath(filepath).startswith(os.path.abspath(USER_TEMPLATES_DIR)):
         futil.log(f'{CMD_NAME}: DELETE_TEMPLATE path traversal blocked: {template_id}',
                   adsk.core.LogLevels.WarningLogLevel)
@@ -519,19 +664,12 @@ def _on_delete_template(data_json):
     _on_get_templates()
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Template loading / importing
+# ═══════════════════════════════════════════════════════════════════
+
 def _build_template_payload(parameters: dict, mode: str, template_name: str = ''):
-    """Build a model-state payload from schema defaults merged with parameter overrides.
-
-    Shared by _on_load_template() and _on_import_share() to avoid duplication.
-
-    Args:
-        parameters: Dict of parameter name → expression value.
-        mode: Payload mode string ('template' or 'imported').
-        template_name: Optional template name for display.
-
-    Returns:
-        A payload dict ready to send to the UI, or None if schema can't load.
-    """
+    """Build a model-state payload from schema defaults merged with parameter overrides."""
     schema = parameter_bridge.load_schema()
     if schema is None:
         return None
@@ -555,7 +693,6 @@ def _build_template_payload(parameters: dict, mode: str, template_name: str = ''
                 continue
             name = param_def['name']
             unit_kind = param_def.get('unitKind', 'length')
-            # For metric documents, prefer the _metric variant from the source data
             if is_metric and unit_kind == 'length':
                 metric_key = f'{name}_metric'
                 expr = parameters.get(metric_key) or parameters.get(name) or param_def.get('defaultMetric') or param_def.get('default', '')
@@ -663,151 +800,12 @@ def _on_import_share(data_json):
     futil.log(f'{CMD_NAME}: Imported share data ({len(parameters)} params)')
 
 
-def palette_incoming(args: adsk.core.HTMLEventArgs):
-    """Handle messages from the JS palette UI."""
-    action = args.action
-    futil.log(f'{CMD_NAME}: Palette incoming — action: {action}')
-
-    if action == 'ready':
-        _on_palette_ready()
-
-    elif action == 'GET_MODEL_STATE':
-        _on_refresh_request()
-
-    elif action == 'APPLY_PARAMS':
-        _on_apply_params(args.data)
-
-    elif action == 'cancel':
-        _close_palette()
-
-    elif action == 'OPEN_URL':
-        _on_open_url(args.data)
-
-    elif action == 'OPEN_TEMPLATES_FOLDER':
-        _on_open_templates_folder()
-
-    elif action == 'GET_TEMPLATES':
-        _on_get_templates()
-
-    elif action == 'SAVE_TEMPLATE':
-        _on_save_template(args.data)
-
-    elif action == 'DELETE_TEMPLATE':
-        _on_delete_template(args.data)
-
-    elif action == 'LOAD_TEMPLATE':
-        _on_load_template(args.data)
-
-    elif action == 'IMPORT_SHARE':
-        _on_import_share(args.data)
-
-    elif action == 'SET_PARAM_CATEGORY':
-        _on_set_param_category(args.data)
-
-    elif action == 'EDIT_PARAM':
-        _on_edit_param(args.data)
-
-    elif action == 'DELETE_PARAM':
-        _on_delete_param(args.data)
-
-    elif action == 'GET_GROUP_STATES':
-        _on_get_group_states()
-
-    elif action == 'APPLY_TIMELINE_CHANGES':
-        _queue_timeline_op('APPLY_TIMELINE_CHANGES', args.data)
-
-    elif action == 'REMAP_HOLE_TO_SELECTION_SET':
-        _queue_hole_position_op(args.data)
-
-    elif action == 'TOGGLE_ZERO_FRET':
-        _queue_zero_fret_op(args.data)
-
-    elif action == 'TOGGLE_BLIND_FRETS':
-        _queue_blind_frets_op(args.data)
-
-    elif action == 'SET_RADIUS_MODE':
-        _queue_radius_mode_op(args.data)
-
-    elif action == 'TOGGLE_HEEL_CURVE':
-        _queue_heel_curve_op(args.data)
-
-    elif action == 'GET_PREFERENCES':
-        _on_get_preferences()
-
-    elif action == 'SAVE_PREFERENCES':
-        _on_save_preferences(args.data)
-
-    elif action == 'response':
-        pass  # Fusion internal acknowledgment — ignore
-
-    else:
-        futil.log(f'{CMD_NAME}: Unknown palette action: {action}')
-
-
-def _on_palette_ready():
-    """Called when the JS UI signals it has finished loading.
-
-    This fires both on initial palette creation and on a browser-level reload
-    (e.g. right-click → Reload in the palette WebView).  We always re-derive
-    the payload fresh from the active design so the document unit and all
-    parameters reflect the current state — not a stale snapshot from when
-    the palette was first created (which can race ahead of Fusion's init).
-    """
-    global _pending_payload
-    _pending_payload = None          # discard any stale stashed payload
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if not palette:
-        futil.log(f'{CMD_NAME}: _on_palette_ready — no palette found!')
-        return
-
-    # Always push preferences first so the disclaimer decision is made before payload arrives
-    _push_preferences(palette)
-
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if design:
-        fingerprint = parameter_bridge.get_fingerprint(design)
-        if fingerprint is not None:
-            payload = parameter_bridge.build_ui_payload(design)
-        else:
-            payload = parameter_bridge.build_schema_payload(design)
-        if payload:
-            _send_payload(palette, payload)
-            futil.log(f'{CMD_NAME}: Sent fresh payload on palette ready')
-
-
-def _on_refresh_request():
-    """Called when the UI requests a fresh read of the model state.
-
-    In initial mode (no fingerprint), resets to schema defaults.
-    In live mode (has fingerprint), reads from design parameters.
-    """
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        return
-
-    # Check if design has our fingerprint (indicates if template was loaded)
-    fingerprint = parameter_bridge.get_fingerprint(design)
-    has_fingerprint = fingerprint is not None and fingerprint != ''
-
-    # If no fingerprint, we're in initial mode — use schema defaults
-    if not has_fingerprint:
-        payload = parameter_bridge.build_schema_payload(design)
-    else:
-        # Otherwise, read live parameters from design
-        payload = parameter_bridge.build_ui_payload(design)
-
-    if payload:
-        palette = ui.palettes.itemById(PALETTE_ID)
-        if palette:
-            _send_payload(palette, payload)
-
+# ═══════════════════════════════════════════════════════════════════
+# Apply parameters (deferred — unique logic, not factory-generated)
+# ═══════════════════════════════════════════════════════════════════
 
 def _on_apply_params(data_json):
-    """Called when the UI sends parameter changes to apply.
-
-    Immediately sends COMPUTING to JS so it can repaint, then fires a
-    custom event to do the actual work on the next Fusion event loop tick.
-    """
+    """Queue parameter application — fires custom event for main thread."""
     global _pending_apply
 
     try:
@@ -817,17 +815,15 @@ def _on_apply_params(data_json):
                   adsk.core.LogLevels.ErrorLogLevel)
         return
 
-    # Tell the UI we're working — it can repaint now before we block
     palette = ui.palettes.itemById(PALETTE_ID)
     if palette:
         palette.sendInfoToHTML('COMPUTING', '{}')
 
-    # Fire the custom event — actual work happens in _deferred_apply_handler
     app.fireCustomEvent(_APPLY_EVENT_ID)
 
 
 def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
-    """Runs on the next Fusion event loop tick — does the actual apply work."""
+    """Runs on the Fusion main thread — does the actual apply work."""
     global _pending_apply, _owner_document
 
     pending = _pending_apply
@@ -836,7 +832,6 @@ def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
     if pending is None:
         return
 
-    # Extract updates and creates from the structured payload
     param_values = pending.get('updates', {}) or {}
     creates = pending.get('creates', []) or []
 
@@ -844,7 +839,7 @@ def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
     if not design:
         return
 
-    # ── Open template on first apply ─────────────────────────────
+    # Open template on first apply
     if design.userParameters.count == 0:
         doc_unit = parameter_bridge.get_document_unit(design)
         template_file = 'fretboard_metric.f3d' if parameter_bridge.is_metric_length_unit(doc_unit) else 'fretboard_imperial.f3d'
@@ -857,7 +852,6 @@ def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
                          f'{CMD_NAME}', adsk.core.MessageBoxButtonIds.OKButtonId)
             return
 
-        # Capture original document before opening new one
         original_doc = design.parentDocument
 
         import_manager = app.importManager
@@ -868,9 +862,6 @@ def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
 
         _owner_document = template_doc
 
-        # Close the original document if it was completely empty.
-        # Multiple safety checks to avoid closing a document the user
-        # had started working in.
         if original_doc and original_doc != template_doc:
             try:
                 orig_design = adsk.fusion.Design.cast(original_doc.products.itemByProductType('DesignProductType'))
@@ -898,16 +889,18 @@ def _deferred_apply_handler(args: adsk.core.CustomEventArgs):
 
         parameter_bridge.set_fingerprint(design)
 
-    # ── Apply parameter changes ───────────────────────────────────
     result = parameter_bridge.apply_parameters(design, param_values, creates=creates)
     futil.log(f'{CMD_NAME}: Apply result: {result}')
 
-    # Push updated live state back to the UI
     _on_refresh_request()
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Parameter CRUD handlers
+# ═══════════════════════════════════════════════════════════════════
+
 def _on_set_param_category(data_json):
-    """Update the group assignment for a user parameter (extra/custom param)."""
+    """Update the group assignment for a user parameter."""
     try:
         data = json.loads(data_json)
     except Exception as e:
@@ -915,17 +908,12 @@ def _on_set_param_category(data_json):
                   adsk.core.LogLevels.ErrorLogLevel)
         return
 
-    param_name = data.get('name', '')
-    group_id = data.get('groupId', '')
-
     design = adsk.fusion.Design.cast(app.activeProduct)
     if not design:
         return
 
-    result = parameter_bridge.set_param_group(design, param_name, group_id)
-    futil.log(f'{CMD_NAME}: SET_PARAM_CATEGORY {param_name!r} -> {group_id!r}: {result}')
-
-    # Refresh UI with updated state
+    result = parameter_bridge.set_param_group(design, data.get('name', ''), data.get('groupId', ''))
+    futil.log(f'{CMD_NAME}: SET_PARAM_CATEGORY {data.get("name", "")!r} -> {data.get("groupId", "")!r}: {result}')
     _on_refresh_request()
 
 
@@ -938,19 +926,15 @@ def _on_edit_param(data_json):
                   adsk.core.LogLevels.ErrorLogLevel)
         return
 
-    old_name = data.get('oldName', '')
-    new_name = data.get('newName', old_name)
-    description = data.get('description', '')
-    group_id = data.get('groupId', '')
-
     design = adsk.fusion.Design.cast(app.activeProduct)
     if not design:
         return
 
-    result = parameter_bridge.edit_param(design, old_name, new_name, description, group_id)
+    old_name = data.get('oldName', '')
+    new_name = data.get('newName', old_name)
+    result = parameter_bridge.edit_param(design, old_name, new_name,
+                                          data.get('description', ''), data.get('groupId', ''))
     futil.log(f'{CMD_NAME}: EDIT_PARAM {old_name!r} -> {new_name!r}: {result}')
-
-    # Refresh UI with updated state
     _on_refresh_request()
 
 
@@ -963,20 +947,19 @@ def _on_delete_param(data_json):
                   adsk.core.LogLevels.ErrorLogLevel)
         return
 
-    param_name = data.get('name', '')
-
     design = adsk.fusion.Design.cast(app.activeProduct)
     if not design:
         return
 
+    param_name = data.get('name', '')
     result = parameter_bridge.delete_param(design, param_name)
     futil.log(f'{CMD_NAME}: DELETE_PARAM {param_name!r}: {result}')
-
-    # Refresh UI with updated state
     _on_refresh_request()
 
 
-# ── Timeline management handlers ─────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# Timeline management (deferred — unique logic, not factory-generated)
+# ═══════════════════════════════════════════════════════════════════
 
 def _on_get_group_states():
     """Send curated group suppression states to the UI."""
@@ -992,12 +975,7 @@ def _on_get_group_states():
 
 
 def _queue_timeline_op(action: str, data_json: str):
-    """Queue a timeline operation to run on the Fusion main thread.
-
-    The palette incomingFromHTML handler runs on a thread where design
-    modifications are not allowed.  We store the operation and fire a custom
-    event so it executes on the next Fusion event-loop tick.
-    """
+    """Queue a timeline operation to run on the Fusion main thread."""
     global _pending_timeline_op
     try:
         data = json.loads(data_json)
@@ -1045,7 +1023,7 @@ def _deferred_timeline_handler(args: adsk.core.CustomEventArgs):
                     result = parameter_bridge.suppress_group_with_contents(design, name)
                 else:
                     result = parameter_bridge.unsuppress_group_with_contents(design, name)
-            else:  # Feature
+            else:
                 if target_suppressed:
                     result = parameter_bridge.suppress_timeline_item(design, name)
                 else:
@@ -1077,259 +1055,22 @@ def _deferred_timeline_handler(args: adsk.core.CustomEventArgs):
         palette.sendInfoToHTML('TIMELINE_OPERATION_RESULT', json.dumps(result))
 
 
-# ── Hole-position remap handlers ─────────────────────────────────
-
-def _queue_hole_position_op(data_json: str):
-    """Queue a hole-position remap to run on the Fusion main thread."""
-    global _pending_hole_op
-    try:
-        data = json.loads(data_json)
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Bad REMAP_HOLE_TO_SELECTION_SET data: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    futil.log(f'{CMD_NAME}: Queueing hole remap — hole="{data.get("holeName")}" set="{data.get("selectionSetName")}"')
-    _pending_hole_op = data
-    app.fireCustomEvent(_HOLE_POSITION_EVENT_ID)
-
-
-def _deferred_hole_position_handler(args: adsk.core.CustomEventArgs):
-    """Runs on the Fusion main thread — remaps a hole feature's positions."""
-    global _pending_hole_op
-
-    op = _pending_hole_op
-    _pending_hole_op = None
-
-    if op is None:
-        return
-
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        futil.log(f'{CMD_NAME}: hole remap — no active design',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    hole_name = op.get('holeName', '')
-    selection_set_name = op.get('selectionSetName', '')
-
-    result = parameter_bridge.remap_hole_to_selection_set(design, hole_name, selection_set_name)
-    futil.log(f'{CMD_NAME}: hole remap result: {result["message"]}')
-
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.sendInfoToHTML('HOLE_POSITION_RESULT', json.dumps(result))
-
-    # Auto-refresh the options panel
-    _on_get_group_states()
-
-
-def _queue_zero_fret_op(data_json: str):
-    """Queue a zero-fret toggle to run on the Fusion main thread."""
-    global _pending_zero_fret_op
-    try:
-        data = json.loads(data_json)
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Bad TOGGLE_ZERO_FRET data: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    futil.log(f'{CMD_NAME}: Queueing zero-fret toggle — enabled={data.get("enabled")}')
-    _pending_zero_fret_op = data
-    app.fireCustomEvent(_ZERO_FRET_EVENT_ID)
-
-
-def _deferred_zero_fret_handler(args: adsk.core.CustomEventArgs):
-    """Runs on the Fusion main thread — toggles the Zero Fret feature."""
-    global _pending_zero_fret_op
-
-    op = _pending_zero_fret_op
-    _pending_zero_fret_op = None
-
-    if op is None:
-        return
-
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        futil.log(f'{CMD_NAME}: zero-fret toggle — no active design',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    enabled = op.get('enabled', False)
-
-    result = parameter_bridge.toggle_zero_fret(design, enabled)
-    futil.log(f'{CMD_NAME}: zero-fret toggle result: {result["message"]}')
-
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.sendInfoToHTML('ZERO_FRET_RESULT', json.dumps(result))
-
-    # Auto-refresh the options panel
-    _on_get_group_states()
-
-
-def _queue_blind_frets_op(data_json: str):
-    """Queue a blind-frets toggle to run on the Fusion main thread."""
-    global _pending_blind_frets_op
-    try:
-        data = json.loads(data_json)
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Bad TOGGLE_BLIND_FRETS data: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    futil.log(f'{CMD_NAME}: Queueing blind-frets toggle — enabled={data.get("enabled")}')
-    _pending_blind_frets_op = data
-    app.fireCustomEvent(_BLIND_FRETS_EVENT_ID)
-
-
-def _deferred_blind_frets_handler(args: adsk.core.CustomEventArgs):
-    """Runs on the Fusion main thread — toggles the Blind Frets feature."""
-    global _pending_blind_frets_op
-
-    op = _pending_blind_frets_op
-    _pending_blind_frets_op = None
-
-    if op is None:
-        return
-
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        futil.log(f'{CMD_NAME}: blind-frets toggle — no active design',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    enabled = op.get('enabled', False)
-
-    result = parameter_bridge.toggle_blind_frets(design, enabled)
-    futil.log(f'{CMD_NAME}: blind-frets toggle result: {result["message"]}')
-
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.sendInfoToHTML('BLIND_FRETS_RESULT', json.dumps(result))
-
-    # Auto-refresh the options panel
-    _on_get_group_states()
-
-
-def _queue_radius_mode_op(data_json: str):
-    """Queue a radius mode change to run on the Fusion main thread."""
-    global _pending_radius_mode_op
-    try:
-        data = json.loads(data_json)
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Bad SET_RADIUS_MODE data: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    futil.log(f'{CMD_NAME}: Queueing radius mode change — mode={data.get("mode")}')
-    _pending_radius_mode_op = data
-    app.fireCustomEvent(_RADIUS_MODE_EVENT_ID)
-
-
-def _deferred_radius_mode_handler(args: adsk.core.CustomEventArgs):
-    """Runs on the Fusion main thread — sets the radius mode."""
-    global _pending_radius_mode_op
-
-    op = _pending_radius_mode_op
-    _pending_radius_mode_op = None
-
-    if op is None:
-        return
-
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        futil.log(f'{CMD_NAME}: radius mode change — no active design',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    result = parameter_bridge.set_radius_mode(design, op)
-    futil.log(f'{CMD_NAME}: radius mode change result: {result["message"]}')
-
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.sendInfoToHTML('RADIUS_MODE_RESULT', json.dumps(result))
-
-    # Auto-refresh the options panel
-    _on_get_group_states()
-
-
-def _queue_heel_curve_op(data_json: str):
-    """Queue a heel curve toggle to run on the Fusion main thread."""
-    global _pending_heel_curve_op
-    try:
-        data = json.loads(data_json)
-    except Exception as e:
-        futil.log(f'{CMD_NAME}: Bad TOGGLE_HEEL_CURVE data: {e}',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    futil.log(f'{CMD_NAME}: Queueing heel curve toggle — enabled={data.get("enabled")}')
-    _pending_heel_curve_op = data
-    app.fireCustomEvent(_HEEL_CURVE_EVENT_ID)
-
-
-def _deferred_heel_curve_handler(args: adsk.core.CustomEventArgs):
-    """Runs on the Fusion main thread — toggles the Heel Curve feature."""
-    global _pending_heel_curve_op
-
-    op = _pending_heel_curve_op
-    _pending_heel_curve_op = None
-
-    if op is None:
-        return
-
-    design = adsk.fusion.Design.cast(app.activeProduct)
-    if not design:
-        futil.log(f'{CMD_NAME}: heel curve toggle — no active design',
-                  adsk.core.LogLevels.ErrorLogLevel)
-        return
-
-    enabled = op.get('enabled', False)
-    result = parameter_bridge.toggle_heel_curve(design, enabled)
-    futil.log(f'{CMD_NAME}: heel curve toggle result: {result["message"]}')
-
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.sendInfoToHTML('HEEL_CURVE_RESULT', json.dumps(result))
-
-    # Auto-refresh the options panel
-    _on_get_group_states()
-
-
-def palette_closed(args: adsk.core.UserInterfaceGeneralEventArgs):
-    """Called when the user closes the palette."""
-    futil.log(f'{CMD_NAME}: Palette closed')
-
-
-def _close_palette():
-    """Hide the palette."""
-    palette = ui.palettes.itemById(PALETTE_ID)
-    if palette:
-        palette.isVisible = False
-
-
-def command_destroy(args: adsk.core.CommandEventArgs):
-    """Clean up local handlers when the command ends."""
-    futil.log(f'{CMD_NAME}: Command Destroy')
-    global local_handlers
-    local_handlers = []
-
-
-# ── Document Lifecycle ──────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# Document Lifecycle
+# ═══════════════════════════════════════════════════════════════════
 
 def on_document_activated(args: adsk.core.DocumentEventArgs):
     """Hide/show the palette based on which document is active."""
     global _owner_document
-    
+
     palette = ui.palettes.itemById(PALETTE_ID)
     if not palette:
         return
-    
-    # Get the newly activated document
+
     active_doc = args.document
 
-    # Hide palette if switching away from owner document
     if _owner_document and active_doc != _owner_document:
         palette.isVisible = False
         futil.log(f'{CMD_NAME}: Hiding palette (switched to different document)')
+
+

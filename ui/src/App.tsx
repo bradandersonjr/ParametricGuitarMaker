@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { AnnouncementBar } from "@/components/AnnouncementBar"
@@ -7,7 +7,7 @@ import { UnitIndicator } from "@/components/UnitIndicator"
 import { BetaDisclaimer } from "@/components/BetaDisclaimer"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { useModelPayload } from "@/hooks/useModelPayload"
-import { sendToPython } from "@/lib/fusion-bridge"
+import { onPythonMessage } from "@/lib/fusion-bridge"
 import { useVersionCheck } from "@/hooks/useVersionCheck"
 import { ParametersPage } from "@/pages/ParametersPage"
 import { ReportsPage } from "@/pages/ReportsPage"
@@ -27,25 +27,25 @@ const BETA_DISCLAIMER_SESSION_KEY = "pgfm_beta_disclaimer_dismissed_session"
 function App() {
   const [activePage, setActivePage] = useState<PageId>("parameters")
   const [importSuccess, setImportSuccess] = useState(false)
-  const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(true)
+  const [dismissedThisSession, setDismissedThisSession] = useState(false)
   const { payload, connected, templateList } = useModelPayload()
   const versionInfo = useVersionCheck(APP_VERSION)
 
+  // Sync dismissal state from sessionStorage (session-only behavior).
   useEffect(() => {
-    const syncDisclaimerVisibility = () => {
-      const dismissedThisSession = sessionStorage.getItem(BETA_DISCLAIMER_SESSION_KEY) === "1"
-      if (dismissedThisSession) {
-        setShowBetaDisclaimer(false)
-        sendToPython("GET_MODEL_STATE")
-      } else {
-        setShowBetaDisclaimer(true)
-      }
+    const syncFromSession = () => {
+      const hiddenForSession = sessionStorage.getItem(BETA_DISCLAIMER_SESSION_KEY) === "1"
+      setDismissedThisSession(hiddenForSession)
     }
 
-    syncDisclaimerVisibility()
-    document.addEventListener("visibilitychange", syncDisclaimerVisibility)
-    return () => document.removeEventListener("visibilitychange", syncDisclaimerVisibility)
+    syncFromSession()
+    return onPythonMessage('PALETTE_RESHOWN', () => {
+      syncFromSession()
+    })
   }, [])
+
+  // Show disclaimer unless user opted to hide it for this Fusion session.
+  const showBetaDisclaimer = !dismissedThisSession
 
   const handleDisclaimerAccept = useCallback((dontShowAgain: boolean) => {
     if (dontShowAgain) {
@@ -53,9 +53,7 @@ function App() {
     } else {
       sessionStorage.removeItem(BETA_DISCLAIMER_SESSION_KEY)
     }
-
-    setShowBetaDisclaimer(false)
-    sendToPython("GET_MODEL_STATE")
+    setDismissedThisSession(true)
   }, [])
 
   return (

@@ -1,19 +1,6 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer"
-import { ComboboxSelect } from "@/components/ui/combobox"
 import {
   Select,
   SelectContent,
@@ -23,12 +10,11 @@ import {
 } from "@/components/ui/select"
 import { sendToPython } from "@/lib/fusion-bridge"
 import { isMetricUnit } from "@/lib/units"
-import type { ModelPayload, ParameterGroup, Parameter, PendingParam } from "@/types"
-import { ChevronDown, ChevronRight, LayoutGrid, X, Search, Undo2, Redo2, Plus, Minus, AlertCircle, RefreshCw, RotateCcw, Check, GripVertical } from "lucide-react"
+import type { ModelPayload, ParameterGroup, PendingParam } from "@/types"
+import { X, LayoutGrid, Search, Undo2, Redo2, RefreshCw, RotateCcw, Check, GripVertical } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { HistoryPopover, IconTooltip } from "@/components/HistoryPopover"
 import { OptionsPanel } from "@/components/OptionsPanel"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { usePreferences } from "@/hooks/usePreferences"
 import {
   DndContext,
@@ -45,1260 +31,18 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
 
-// ── Helpers ────────────────────────────────────────────────────────
-
-/** Filter input to valid numeric characters.
- *  integerOnly=true: digits only.  integerOnly=false: digits + single decimal point. */
-function filterNumericInput(raw: string, integerOnly: boolean): string {
-  if (integerOnly) return raw.replace(/[^0-9]/g, "")
-  // Allow digits and at most one decimal point
-  let result = ""
-  let hasDot = false
-  for (const ch of raw) {
-    if (ch >= "0" && ch <= "9") { result += ch }
-    else if (ch === "." && !hasDot) { result += ch; hasDot = true }
-  }
-  return result
-}
-
-/** Remove trailing zeros from numeric strings.
- *  "16.00" → "16", "25.400" → "25.4", "12.75" → "12.75", "0.0625" → "0.0625" */
-function stripTrailingZeros(value: string): string {
-  // Only process if it looks like a decimal number
-  if (!/^\d*\.?\d+$/.test(value)) return value
-  // Convert to number and back to remove trailing zeros
-  const num = parseFloat(value)
-  if (isNaN(num)) return value
-  // Use toString() which automatically removes trailing zeros
-  return num.toString()
-}
-
-/** Compare two parameter expressions, treating numerically-equal strings as equal.
- *  "27.00" == "27", "25.400" == "25.4" — falls back to string equality for formulas. */
-function expressionsEqual(a: string, b: string): boolean {
-  if (a === b) return true
-  const na = parseFloat(a)
-  const nb = parseFloat(b)
-  // Only do numeric comparison if both sides are purely numeric (no formula chars)
-  const isNumeric = (s: string) => s.trim() !== "" && !isNaN(Number(s))
-  if (isNumeric(a) && isNumeric(b)) return na === nb
-  return false
-}
-
-// ── Custom category section ────────────────────────────────────────
-
-function CustomCategorySection({
-  category,
-  extraParams,
-  displayValues,
-  originalExpressions,
-  onChange,
-  onFocus,
-  onBlur,
-  searchQuery,
-  parameterMap,
-  groupSchemas,
-  allParamNames,
-  customCategories,
-  onAddCustomCategory,
-  onRemoveCustomCategory,
-  documentUnit,
-  isAddFormOpen,
-  onOpenAddForm,
-  onCloseAddForm,
-}: {
-  category: { id: string; label: string }
-  extraParams: Parameter[]
-  displayValues: Record<string, string>
-  originalExpressions: Record<string, string>
-  onChange: (name: string, val: string) => void
-  onFocus: (name: string) => void
-  onBlur: (name: string, currentValOverride?: string) => void
-  searchQuery: string
-  parameterMap: Record<string, { unit: string }>
-  groupSchemas: { id: string; label: string }[]
-  allParamNames: Set<string>
-  customCategories: { id: string; label: string }[]
-  onAddCustomCategory?: (id: string, label: string) => void
-  onRemoveCustomCategory?: (id: string) => void
-  documentUnit: string
-  isAddFormOpen: boolean
-  onOpenAddForm: () => void
-  onCloseAddForm: () => void
-}) {
-  const [open, setOpen] = useState(true)
-
-  const filteredParams = extraParams.filter((param) => {
-    const query = searchQuery.toLowerCase()
-    return (
-      param.name.toLowerCase().includes(query) ||
-      param.description.toLowerCase().includes(query)
-    )
-  })
-
-  if (filteredParams.length === 0 && !isAddFormOpen) {
-    return null
-  }
-
-  return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <button
-        className="w-full flex items-center gap-2 px-3 py-2 bg-muted/40 hover:bg-muted/70 transition-colors text-left rounded-t-lg"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className="text-muted-foreground">
-          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </span>
-        <LayoutGrid size={13} className="text-muted-foreground shrink-0" />
-        <span className="text-xs font-semibold font-heading">{category.label}</span>
-        <span className="text-xs text-muted-foreground font-normal">
-          ({filteredParams.length} parameter{filteredParams.length !== 1 ? "s" : ""})
-        </span>
-        <span
-          role="button"
-          aria-label={`Add parameter to ${category.label}`}
-          title={`Add parameter to ${category.label}`}
-          className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
-          onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
-        >
-          <Plus size={11} />
-          New Parameter
-        </span>
-      </button>
-      {open && (
-        <div className="px-3 py-3 space-y-2">
-          {filteredParams.map((param) => {
-            const modified = !expressionsEqual(displayValues[param.name] ?? "", originalExpressions[param.name] ?? "")
-            const unit = parameterMap[param.name]?.unit || ""
-            return (
-              <ExtraParamRow
-                key={param.name}
-                param={param}
-                currentGroupId={category.id}
-                groupSchemas={groupSchemas}
-                displayValue={displayValues[param.name] ?? ""}
-                modified={modified}
-                unit={unit}
-                allParamNames={allParamNames}
-                onChange={onChange}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                customCategories={customCategories}
-                onAddCustomCategory={onAddCustomCategory}
-                onRemoveCustomCategory={onRemoveCustomCategory}
-                documentUnit={documentUnit}
-              />
-            )
-          })}
-          {isAddFormOpen && (
-            <AddParamForm
-              groupId={category.id}
-              documentUnit={documentUnit}
-              allParamNames={allParamNames}
-              onCancel={onCloseAddForm}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Uncategorized section ──────────────────────────────────────────
-
-function UncategorizedSection({
-  extraParams,
-  displayValues,
-  originalExpressions,
-  onChange,
-  onFocus,
-  onBlur,
-  searchQuery,
-  parameterMap,
-  groupSchemas,
-  allParamNames,
-  customCategories,
-  onAddCustomCategory,
-  onRemoveCustomCategory,
-  documentUnit,
-}: {
-  extraParams: Parameter[]
-  displayValues: Record<string, string>
-  originalExpressions: Record<string, string>
-  onChange: (name: string, val: string) => void
-  onFocus: (name: string) => void
-  onBlur: (name: string, currentValOverride?: string) => void
-  searchQuery: string
-  parameterMap: Record<string, { unit: string }>
-  groupSchemas: { id: string; label: string }[]
-  allParamNames: Set<string>
-  customCategories: { id: string; label: string }[]
-  onAddCustomCategory?: (id: string, label: string) => void
-  onRemoveCustomCategory?: (id: string) => void
-  documentUnit?: string
-}) {
-  const [open, setOpen] = useState(true)
-
-  // Filter extra params by search query
-  const filteredParams = extraParams.filter((param) => {
-    const query = searchQuery.toLowerCase()
-    return (
-      param.name.toLowerCase().includes(query) ||
-      param.description.toLowerCase().includes(query)
-    )
-  })
-
-  if (filteredParams.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="border border-blue-300 dark:border-blue-800 rounded-lg overflow-hidden">
-      <button
-        className="w-full flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left rounded-t-lg"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className="text-blue-600 dark:text-blue-400">
-          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </span>
-        <AlertCircle size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
-        <span className="text-xs font-semibold font-heading text-blue-800 dark:text-blue-200">Uncategorized</span>
-        <span className="text-xs text-blue-700 dark:text-blue-300 font-normal">
-          ({filteredParams.length} parameter{filteredParams.length !== 1 ? "s" : ""})
-        </span>
-      </button>
-      {open && (
-        <div className="px-3 py-3 space-y-2 bg-blue-50/50 dark:bg-blue-950/20">
-          {filteredParams.map((param) => {
-            const modified = !expressionsEqual(displayValues[param.name] ?? "", originalExpressions[param.name] ?? "")
-            const unit = parameterMap[param.name]?.unit || ""
-            return (
-              <ExtraParamRow
-                key={param.name}
-                param={param}
-                currentGroupId=""
-                groupSchemas={groupSchemas}
-                displayValue={displayValues[param.name] ?? ""}
-                modified={modified}
-                unit={unit}
-                allParamNames={allParamNames}
-                onChange={onChange}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                customCategories={customCategories}
-                onAddCustomCategory={onAddCustomCategory}
-                onRemoveCustomCategory={onRemoveCustomCategory}
-                documentUnit={documentUnit}
-              />
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Category combobox ─────────────────────────────────────────────
-
-function CategoryCombobox({
-  value,
-  onChange,
-  options,
-  onAddCategory: _onAddCategory,
-  onRemoveCategory: _onRemoveCategory,
-  disabled,
-}: {
-  value: string
-  onChange: (val: string) => void
-  options: { id: string; label: string }[]
-  onAddCategory?: (id: string, label: string) => void
-  onRemoveCategory?: (id: string) => void
-  disabled?: boolean
-}) {
-  // Filter out Uncategorized and Metadata from the dropdown, but keep all as valid values
-  const filteredOptions = options.filter(
-    (opt) => opt.label !== "Uncategorized" && opt.label !== "Metadata"
-  )
-
-  return (
-    <ComboboxSelect
-      value={value}
-      onValueChange={onChange}
-      options={filteredOptions.map((opt) => ({ value: opt.id, label: opt.label }))}
-      placeholder="Select category..."
-      searchPlaceholder="Search categories..."
-      emptyText="No category found."
-      disabled={disabled}
-    />
-  )
-}
-
-// ── Shared modal shell ────────────────────────────────────────────
-
-function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const isMobile = useIsMobile()
-
-  if (isMobile) {
-    return (
-      <Drawer open onOpenChange={(open) => { if (!open) onClose() }}>
-        <DrawerContent className="max-h-[90vh]">
-          <DrawerHeader className="text-left">
-            <DrawerTitle className="text-sm">{title}</DrawerTitle>
-          </DrawerHeader>
-          <div className="px-4 pb-4 overflow-y-auto space-y-3">
-            {children}
-          </div>
-        </DrawerContent>
-      </Drawer>
-    )
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="sm:max-w-sm p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b border-border">
-          <DialogTitle className="text-sm">{title}</DialogTitle>
-        </DialogHeader>
-        <div className="p-4 space-y-3">
-          {children}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// ── Unified parameter info / edit modal ───────────────────────────
-// isSchema=true  → name is read-only, no category picker, no delete
-// isSchema=false → full edit: rename, description, category, delete
-
-function ParamInfoModal({
-  param,
-  currentGroupId,
-  groupSchemas,
-  allParamNames,
-  displayValue,
-  unit,
-  isSchema,
-  onClose,
-  customCategories,
-  onAddCustomCategory,
-  onRemoveCustomCategory,
-  documentUnit,
-  isInitial,
-}: {
-  param: Parameter
-  currentGroupId: string
-  groupSchemas: { id: string; label: string }[]
-  allParamNames: Set<string>
-  displayValue: string
-  unit: string
-  isSchema: boolean
-  onClose: () => void
-  customCategories: { id: string; label: string }[]
-  onAddCustomCategory?: (id: string, label: string) => void
-  onRemoveCustomCategory?: (id: string) => void
-  documentUnit?: string
-  isInitial: boolean
-}) {
-  const [name, setName] = useState(param.name)
-  const [description, setDescription] = useState(param.description || "")
-  const [groupId, setGroupId] = useState(currentGroupId)
-  const [nameError, setNameError] = useState("")
-  const [confirmDelete, setConfirmDelete] = useState(false)
-
-  function validateName(n: string): string {
-    if (!n) return "Name is required."
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(n)) return "Letters, numbers, underscores only. Must start with a letter or underscore."
-    if (n !== param.name && allParamNames.has(n)) return "A parameter with this name already exists."
-    return ""
-  }
-
-  const hasChanges = name !== param.name || description !== (param.description || "") || groupId !== currentGroupId
-  const isValid = name.length > 0 && !nameError
-
-  function handleSave() {
-    if (isSchema) {
-      // Only save description for schema params
-      sendToPython("EDIT_PARAM", { oldName: param.name, newName: param.name, description, groupId: "" })
-    } else {
-      const err = validateName(name)
-      if (err) { setNameError(err); return }
-      sendToPython("EDIT_PARAM", { oldName: param.name, newName: name, description, groupId })
-    }
-    onClose()
-  }
-
-  function handleDelete() {
-    sendToPython("DELETE_PARAM", { name: param.name })
-    onClose()
-  }
-
-  const label = (isSchema ? (param.label || param.name) : param.name)
-
-  return (
-    <ModalShell title={label} onClose={onClose}>
-
-      {/* Initial mode notice */}
-      {isInitial && (
-        <div className="rounded-lg border border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs space-y-1">
-          <p className="text-blue-800 dark:text-blue-200 font-medium">Design Not Loaded</p>
-          <p className="text-blue-700 dark:text-blue-300">Load a template or create a design to edit parameters.</p>
-        </div>
-      )}
-
-      {/* Current value pill */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border">
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Current value</p>
-          <p className="text-sm font-mono font-semibold text-foreground tabular-nums">
-            {displayValue}{unit ? <span className="text-muted-foreground font-normal text-xs"> {unit}</span> : null}
-          </p>
-        </div>
-        {(() => {
-          const isMetric = isMetricUnit(documentUnit) && param.unitKind === 'length'
-          const displayMin = isMetric ? (param.minMetric ?? param.min) : param.min
-          const displayMax = isMetric ? (param.maxMetric ?? param.max) : param.max
-          return (displayMin != null || displayMax != null) ? (
-            <div className="text-right shrink-0">
-              <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Range</p>
-              <p className="text-xs font-mono text-muted-foreground tabular-nums">
-                {displayMin ?? "—"} – {displayMax ?? "—"}{unit ? ` ${unit}` : ""}
-              </p>
-            </div>
-          ) : null
-        })()}
-      </div>
-
-      {/* Name */}
-      <div>
-        <label className="block text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-1">
-          Parameter Name
-        </label>
-        {isSchema ? (
-          <div className="flex items-center h-8 px-2.5 rounded-lg border border-input bg-muted/30">
-            <span className="text-xs font-mono text-foreground">{param.name}</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">read-only</span>
-          </div>
-        ) : (
-          <>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setNameError(validateName(e.target.value)) }}
-              onKeyDown={(e) => { if (e.key === "Enter" && isValid && !isInitial) handleSave() }}
-              autoFocus={!isInitial}
-              disabled={isInitial}
-              className={[
-                "w-full h-8 px-2.5 text-xs font-mono rounded-lg border bg-background focus:outline-none focus:ring-1",
-                isInitial ? "disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/30" : "",
-                nameError ? "border-red-500 ring-red-500/50" : "border-input focus:ring-ring",
-              ].join(" ")}
-            />
-            {nameError && <p className="text-[10px] text-red-500 mt-0.5">{nameError}</p>}
-          </>
-        )}
-      </div>
-
-      {/* Description */}
-      <div>
-        <label className="block text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-1">
-          Description
-        </label>
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && hasChanges && !isInitial) handleSave() }}
-          placeholder="Add a description…"
-          autoFocus={isSchema && !isInitial}
-          disabled={isInitial}
-          className="w-full h-8 px-2.5 text-xs rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/30"
-        />
-      </div>
-
-      {/* Category — user params only */}
-      {!isSchema && (
-        <div>
-          <label className="block text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-1">
-            Category
-          </label>
-          <CategoryCombobox
-            value={groupId}
-            onChange={setGroupId}
-            options={[{ id: "", label: "Uncategorized" }, ...groupSchemas, ...customCategories]}
-            onAddCategory={onAddCustomCategory}
-            onRemoveCategory={onRemoveCustomCategory}
-            disabled={isInitial}
-          />
-        </div>
-      )}
-
-      {/* Delete confirmation (user params only) */}
-      {!isSchema && confirmDelete && (
-        <div className="rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2.5 text-xs space-y-2">
-          <p className="text-red-800 dark:text-red-200">Delete <strong>{param.name}</strong>? This cannot be undone.</p>
-          <div className="flex gap-2">
-            <button onClick={() => setConfirmDelete(false)} className="h-6 px-2.5 rounded-md border border-red-300 dark:border-red-700 bg-background hover:bg-muted transition-colors text-xs">
-              Cancel
-            </button>
-            <button onClick={handleDelete} className="h-6 px-2.5 rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors font-medium text-xs">
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      {isInitial ? (
-        <div className="flex justify-end pt-3 border-t border-border">
-          <button onClick={onClose} className="h-7 px-3 text-xs rounded-lg border border-input bg-background hover:bg-muted transition-colors">
-            Close
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between pt-3 pb-1 border-t border-border">
-          {!isSchema ? (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="h-7 px-3 text-xs rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-            >
-              Delete
-            </button>
-          ) : (
-            <span />
-          )}
-          <div className="flex gap-2">
-            <button onClick={onClose} className="h-7 px-3 text-xs rounded-lg border border-input bg-background hover:bg-muted transition-colors">
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!hasChanges || (!isSchema && !isValid)}
-              className="h-7 px-3 text-xs rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors font-medium"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-    </ModalShell>
-  )
-}
-
-// ── Schema param row (built-in, click to edit description) ──────────
-
-function SchemaParamRow({
-  param,
-  displayValue,
-  displayUnit,
-  modified,
-  hasError,
-  errorMessage,
-  scaleMode,
-  radiusMode,
-  editStartValues,
-  groupSchemas,
-  allParamNames,
-  onChange,
-  onFocus,
-  onBlur,
-  customCategories,
-  onAddCustomCategory,
-  onRemoveCustomCategory,
-  documentUnit,
-  isInitial,
-}: {
-  param: Parameter
-  displayValue: string
-  displayUnit: string
-  modified: boolean
-  hasError: boolean
-  errorMessage?: string
-  scaleMode: "single" | "multi"
-  radiusMode: "compound" | "straight" | "flat"
-  editStartValues: Record<string, string>
-  groupSchemas: { id: string; label: string }[]
-  allParamNames: Set<string>
-  onChange: (name: string, val: string) => void
-  onFocus: (name: string) => void
-  onBlur: (name: string, currentValOverride?: string) => void
-  customCategories: { id: string; label: string }[]
-  onAddCustomCategory?: (id: string, label: string) => void
-  onRemoveCustomCategory?: (id: string) => void
-  documentUnit?: string
-  isInitial: boolean
-}) {
-  const [modalOpen, setModalOpen] = useState(false)
-  const label =
-    scaleMode === "single" && param.name === "ScaleLengthBass"
-      ? "Scale Length"
-      : radiusMode === "straight" && param.name === "NutRadius"
-        ? "Fretboard Radius"
-        : param.label
-
-  return (
-    <>
-      <div
-        className="px-2 py-2 rounded-lg hover:bg-muted/20 transition-colors cursor-pointer group/row"
-        onClick={() => setModalOpen(true)}
-        title="Click to edit"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground mb-0.5">{label}</p>
-            <p className="text-xs text-muted-foreground">{param.description}</p>
-          </div>
-          <div
-            className="flex items-center justify-center gap-1 shrink-0 w-[130px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {!displayUnit ? (
-              <button
-                onClick={() => {
-                  // If not focused yet, set the start value
-                  if (!editStartValues.hasOwnProperty(param.name)) {
-                    onFocus(param.name)
-                  }
-                  const val = parseInt(displayValue ?? "0")
-                  const newVal = Math.max(parseInt(param.min?.toString() ?? "0"), val - 1).toString()
-                  onChange(param.name, newVal)
-                  // Trigger blur immediately to record this change to history using the calculated new value
-                  setTimeout(() => onBlur(param.name, newVal), 0)
-                }}
-                className="p-0.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Decrease"
-              >
-                <Minus size={14} />
-              </button>
-            ) : (
-              <div className="w-[19px] shrink-0" />
-            )}
-            <input
-              id={`param-${param.name}`}
-              type="text"
-              value={displayValue}
-              onChange={(e) => onChange(param.name, filterNumericInput(e.target.value, param.step === 1))}
-              onFocus={() => onFocus(param.name)}
-              onBlur={() => onBlur(param.name)}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
-              placeholder={param.default}
-              className={[
-                "h-7 px-2 text-xs text-center tabular-nums rounded-lg w-20 shrink-0",
-                "border bg-background focus:outline-none",
-                "placeholder:text-muted-foreground/50",
-                hasError
-                  ? "border-red-500 ring-1 ring-red-500/50"
-                  : modified
-                    ? "border-amber-500 ring-1 ring-amber-500/50"
-                    : "border-input focus:ring-1 focus:ring-ring",
-              ].join(" ")}
-            />
-            {!displayUnit ? (
-              <button
-                onClick={() => {
-                  // If not focused yet, set the start value
-                  if (!editStartValues.hasOwnProperty(param.name)) {
-                    onFocus(param.name)
-                  }
-                  const val = parseInt(displayValue ?? "0")
-                  const newVal = Math.min(parseInt(param.max?.toString() ?? "999"), val + 1).toString()
-                  onChange(param.name, newVal)
-                  // Trigger blur immediately to record this change to history using the calculated new value
-                  setTimeout(() => onBlur(param.name, newVal), 0)
-                }}
-                className="p-0.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Increase"
-              >
-                <Plus size={14} />
-              </button>
-            ) : (
-              <span className="w-[19px] shrink-0 text-xs text-muted-foreground text-center">
-                {displayUnit}
-              </span>
-            )}
-          </div>
-        </div>
-        {hasError && <div className="text-xs text-red-500 px-2 mt-1">{errorMessage}</div>}
-      </div>
-      {modalOpen && (
-        <ParamInfoModal
-          param={param}
-          currentGroupId=""
-          groupSchemas={groupSchemas}
-          allParamNames={allParamNames}
-          displayValue={displayValue}
-          unit={displayUnit}
-          isSchema={true}
-          onClose={() => setModalOpen(false)}
-          customCategories={customCategories}
-          onAddCustomCategory={onAddCustomCategory}
-          onRemoveCustomCategory={onRemoveCustomCategory}
-          documentUnit={documentUnit}
-          isInitial={isInitial}
-        />
-      )}
-    </>
-  )
-}
-
-// ── Extra param row (user param, full edit) ───────────────────────
-
-function ExtraParamRow({
-  param,
-  currentGroupId,
-  groupSchemas,
-  displayValue,
-  modified,
-  unit,
-  allParamNames,
-  onChange,
-  onFocus,
-  onBlur,
-  customCategories,
-  onAddCustomCategory,
-  onRemoveCustomCategory,
-  documentUnit,
-}: {
-  param: Parameter
-  currentGroupId: string
-  groupSchemas: { id: string; label: string }[]
-  displayValue: string
-  modified: boolean
-  unit: string
-  allParamNames: Set<string>
-  onChange: (name: string, val: string) => void
-  onFocus: (name: string) => void
-  onBlur: (name: string, currentValOverride?: string) => void
-  customCategories: { id: string; label: string }[]
-  onAddCustomCategory?: (id: string, label: string) => void
-  onRemoveCustomCategory?: (id: string) => void
-  documentUnit?: string
-}) {
-  const [editOpen, setEditOpen] = useState(false)
-
-  return (
-    <>
-      <div
-        className="px-2 py-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/20 dark:bg-purple-950/10 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors cursor-pointer"
-        onClick={() => setEditOpen(true)}
-        title="Click to edit parameter"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground">{param.name}</p>
-            {param.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{param.description}</p>
-            )}
-          </div>
-          <div
-            className="flex items-center gap-1 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-[19px] shrink-0" />
-            <input
-              id={`param-${param.name}`}
-              type="text"
-              value={displayValue}
-              onChange={(e) => onChange(param.name, filterNumericInput(e.target.value, false))}
-              onFocus={() => onFocus(param.name)}
-              onBlur={() => onBlur(param.name)}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
-              className={[
-                "h-7 w-20 px-2 text-xs text-center tabular-nums rounded-lg",
-                "border bg-background focus:outline-none",
-                modified
-                  ? "border-amber-500 ring-1 ring-amber-500/50"
-                  : "border-input focus:ring-1 focus:ring-ring",
-              ].join(" ")}
-            />
-            <span className="w-[19px] shrink-0 text-xs text-muted-foreground text-center">
-              {unit}
-            </span>
-          </div>
-        </div>
-      </div>
-      {editOpen && (
-        <ParamInfoModal
-          param={param}
-          currentGroupId={currentGroupId}
-          groupSchemas={groupSchemas}
-          allParamNames={allParamNames}
-          displayValue={displayValue}
-          unit={unit}
-          isSchema={false}
-          onClose={() => setEditOpen(false)}
-          customCategories={customCategories}
-          onAddCustomCategory={onAddCustomCategory}
-          onRemoveCustomCategory={onRemoveCustomCategory}
-          documentUnit={documentUnit}
-          isInitial={false}
-        />
-      )}
-    </>
-  )
-}
-
-// ── Add parameter inline form ──────────────────────────────────────
-
-function AddParamForm({
-  groupId,
-  documentUnit,
-  allParamNames,
-  onCancel,
-}: {
-  groupId: string
-  documentUnit: string
-  allParamNames: Set<string>
-  onCancel: () => void
-}) {
-  const [name, setName] = useState("")
-  const [value, setValue] = useState("")
-  const [unitKind, setUnitKind] = useState<"length" | "angle" | "unitless">("length")
-  const [description, setDescription] = useState("")
-  const [nameError, setNameError] = useState("")
-  const [isCreating, setIsCreating] = useState(false)
-
-  function validateName(n: string): string {
-    if (!n) return ""
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(n)) {
-      return "Letters, numbers, underscores only. Must start with a letter or underscore."
-    }
-    if (allParamNames.has(n)) {
-      return "A parameter with this name already exists."
-    }
-    return ""
-  }
-
-  function handleNameChange(n: string) {
-    setName(n)
-    setNameError(validateName(n))
-  }
-
-  const isValid = name.length > 0 && value.length > 0 && !nameError
-
-  function buildExpression(displayVal: string): string {
-    const unit = unitKind === "length" ? documentUnit : unitKind === "angle" ? "deg" : ""
-    return unit ? `${displayVal} ${unit}` : displayVal
-  }
-
-  function handleAdd() {
-    if (!isValid || isCreating) return
-    const err = validateName(name)
-    if (err) { setNameError(err); return }
-
-    setIsCreating(true)
-
-    // Send directly to Python to create the parameter immediately
-    const creates = [{
-      name,
-      expression: buildExpression(value),
-      description,
-      groupId,
-    }]
-
-    sendToPython("APPLY_PARAMS", { updates: {}, creates })
-
-    // Clear form and close
-    setName("")
-    setValue("")
-    setUnitKind("length")
-    setDescription("")
-    setNameError("")
-    setIsCreating(false)
-    onCancel()
-  }
-
-  const unitDisplay = unitKind === "length" ? documentUnit : unitKind === "angle" ? "deg" : ""
-
-  return (
-    <div className="mt-2 p-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/20 space-y-2">
-      <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">Add Parameter</p>
-      <div className="flex gap-2">
-        <div className="flex-1 min-w-0">
-          <input
-            type="text"
-            placeholder="Name (e.g. MyParam)"
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && isValid) handleAdd() }}
-            className={[
-              "w-full h-7 px-2 text-xs rounded-lg border bg-background focus:outline-none focus:ring-1",
-              nameError ? "border-red-500 ring-red-500/50" : "border-input focus:ring-ring",
-            ].join(" ")}
-            autoFocus
-          />
-          {nameError && <p className="text-[10px] text-red-500 mt-0.5">{nameError}</p>}
-        </div>
-        <ComboboxSelect
-          value={unitKind}
-          onValueChange={(val) => setUnitKind(val as "length" | "angle" | "unitless")}
-          options={[
-            { value: "length", label: `Length (${documentUnit})` },
-            { value: "angle", label: "Angle (deg)" },
-            { value: "unitless", label: "Unitless" },
-          ]}
-          placeholder="Select unit..."
-          className="h-7 px-2 text-xs w-32 shrink-0"
-          showSearch={false}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <input
-            type="text"
-            placeholder="Value"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && isValid) handleAdd() }}
-            className="h-7 w-20 px-2 text-xs text-center tabular-nums rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          {unitDisplay && <span className="text-xs text-muted-foreground">{unitDisplay}</span>}
-        </div>
-        <input
-          type="text"
-          placeholder="Description (optional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && isValid) handleAdd() }}
-          className="flex-1 h-7 px-2 text-xs rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={onCancel}
-          disabled={isCreating}
-          className="h-6 px-2.5 text-xs rounded-md border border-input bg-background hover:bg-muted disabled:opacity-40 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleAdd}
-          disabled={!isValid || isCreating}
-          className="h-6 px-2.5 text-xs rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors font-medium"
-        >
-          {isCreating ? "Creating..." : "Add"}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Sortable group wrapper ─────────────────────────────────────────
-
-function SortableGroupItem({ id, children }: { id: string; children: (dragHandleProps: Record<string, unknown>) => React.ReactNode }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id })
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : undefined,
-    position: "relative" as const,
-    zIndex: isDragging ? 10 : undefined,
-  }
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      {children({ ...attributes, ...listeners })}
-    </div>
-  )
-}
-
-// ── Group section ──────────────────────────────────────────────────
-
-function GroupSection({
-  group,
-  displayValues,
-  originalExpressions,
-  onChange,
-  onFocus,
-  onBlur,
-  defaultOpen,
-  searchQuery,
-  scaleMode,
-  radiusMode,
-  documentUnit,
-  validationErrors,
-  editStartValues,
-  errorFilter,
-  pendingParams,
-  categorizedExtras,
-  groupSchemas,
-  isAddFormOpen,
-  onOpenAddForm,
-  onCloseAddForm,
-  onRemovePendingParam,
-  onPendingParamChange,
-  allParamNames,
-  showAddButton,
-  customCategories,
-  onAddCustomCategory,
-  onRemoveCustomCategory,
-  isInitial,
-  disabled,
-  dragHandleProps,
-}: {
-  group: ParameterGroup
-  displayValues: Record<string, string>
-  originalExpressions: Record<string, string>
-  onChange: (name: string, val: string) => void
-  onFocus: (name: string) => void
-  onBlur: (name: string, currentValOverride?: string) => void
-  defaultOpen: boolean
-  searchQuery: string
-  scaleMode: "single" | "multi"
-  radiusMode: "compound" | "straight" | "flat"
-  documentUnit: string
-  validationErrors: Record<string, string>
-  editStartValues: Record<string, string>
-  errorFilter: Set<string> | null
-  pendingParams: PendingParam[]
-  categorizedExtras: Parameter[]
-  groupSchemas: { id: string; label: string }[]
-  isAddFormOpen: boolean
-  onOpenAddForm: () => void
-  onCloseAddForm: () => void
-  onRemovePendingParam: (id: string) => void
-  onPendingParamChange: (id: string, value: string) => void
-  allParamNames: Set<string>
-  showAddButton: boolean
-  customCategories: { id: string; label: string }[]
-  onAddCustomCategory: (id: string, label: string) => void
-  onRemoveCustomCategory: (id: string) => void
-  isInitial: boolean
-  disabled?: boolean
-  dragHandleProps?: Record<string, unknown>
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-
-  // Filter parameters by search query, scale mode, and radius mode
-  const filteredParams = group.parameters.filter((p) => {
-    // Hide multiscale-only params in single mode
-    if (scaleMode === "single" && ["ScaleLengthTreb", "NeutralFret"].includes(p.name)) {
-      return false
-    }
-
-    // Hide radius params based on radius mode
-    if (radiusMode === "straight" && p.name === "HeelRadius") {
-      return false // HeelRadius hidden in straight mode
-    }
-    if (radiusMode === "flat" && ["NutRadius", "HeelRadius"].includes(p.name)) {
-      return false // Both hidden in flat mode
-    }
-
-    // Hide HeelCurveRadius when it's set to flat (10000 in or 254000 mm)
-    if (p.name === "HeelCurveRadius") {
-      const heelCurveVal = displayValues["HeelCurveRadius"] ?? ""
-      const flatValueImperial = "10000"
-      const flatValueMetric = "254000"
-      if (heelCurveVal.includes(flatValueImperial) || heelCurveVal.includes(flatValueMetric)) {
-        return false // Hidden when set to flat
-      }
-    }
-
-    // If showing error filter, only show errored params
-    if (errorFilter !== null) {
-      return errorFilter.has(p.name)
-    }
-
-    const query = searchQuery.toLowerCase()
-    return (
-      p.name.toLowerCase().includes(query) ||
-      p.label.toLowerCase().includes(query) ||
-      p.description.toLowerCase().includes(query)
-    )
-  })
-
-  // Filter categorized extra params by search query
-  const filteredExtras = categorizedExtras.filter((p) => {
-    if (errorFilter !== null) return false
-    const query = searchQuery.toLowerCase()
-    return p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query)
-  })
-
-  // Filter pending params by search query
-  const filteredPending = pendingParams.filter((p) => {
-    if (errorFilter !== null) return false // pending params have no validation errors
-    const query = searchQuery.toLowerCase()
-    return p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query)
-  })
-
-  // Only show group if it has matching parameters or pending params or the add form is open
-  if (filteredParams.length === 0 && filteredExtras.length === 0 && filteredPending.length === 0 && !isAddFormOpen) {
-    return null
-  }
-
-  const totalCount = filteredParams.length + filteredExtras.length + filteredPending.length
-
-  return (
-    <div className={`border rounded-lg overflow-hidden ${disabled ? "border-border/50 opacity-60" : "border-border"}`}>
-      <div className={`w-full flex items-center gap-0 transition-colors text-left rounded-t-lg group/header ${disabled ? "bg-muted/20" : "bg-muted/40 hover:bg-muted/70"}`}>
-        {dragHandleProps && !searchQuery && (
-          <span
-            {...dragHandleProps}
-            className="flex items-center justify-center px-1 py-2 cursor-grab active:cursor-grabbing text-muted-foreground/50 group-hover/header:text-muted-foreground transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical size={12} />
-          </span>
-        )}
-        <button
-          className={`flex-1 flex items-center gap-2 px-2 py-2 transition-colors text-left ${!dragHandleProps || searchQuery ? "pl-3" : ""} ${disabled ? "hover:bg-muted/30" : "bg-transparent"}`}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <span className="text-muted-foreground">
-            {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          </span>
-          <LayoutGrid size={13} className="text-muted-foreground shrink-0" />
-          <span className={`text-xs font-semibold font-heading ${disabled ? "text-muted-foreground" : ""}`}>{group.label}</span>
-          <span className="text-xs text-muted-foreground font-normal">
-            ({totalCount} parameter{totalCount !== 1 ? "s" : ""})
-          </span>
-          {disabled && (
-            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-              Coming soon
-            </span>
-          )}
-          {!disabled && showAddButton && (
-            <span
-              role="button"
-              aria-label={`Add parameter to ${group.label}`}
-              title={`Add parameter to ${group.label}`}
-              className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-[11px] font-medium"
-              onClick={(e) => { e.stopPropagation(); if (!open) setOpen(true); onOpenAddForm() }}
-            >
-              <Plus size={11} />
-              New Parameter
-            </span>
-          )}
-        </button>
-      </div>
-      {open && (
-        <div className="px-3 py-3 space-y-2">
-          {filteredParams.map((param) => {
-            const modified = !expressionsEqual(displayValues[param.name] ?? "", originalExpressions[param.name] ?? "")
-            const displayUnit = param.unit || (param.unitKind === "length" ? documentUnit : param.unitKind === "angle" ? "deg" : "")
-            const hasError = !!validationErrors[param.name]
-            return (
-              <SchemaParamRow
-                key={param.name}
-                param={param}
-                displayValue={displayValues[param.name] ?? ""}
-                displayUnit={displayUnit}
-                modified={modified}
-                hasError={hasError}
-                errorMessage={validationErrors[param.name]}
-                scaleMode={scaleMode}
-                radiusMode={radiusMode}
-                editStartValues={editStartValues}
-                groupSchemas={groupSchemas}
-                allParamNames={allParamNames}
-                onChange={onChange}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                customCategories={customCategories}
-                onAddCustomCategory={onAddCustomCategory}
-                onRemoveCustomCategory={onRemoveCustomCategory}
-                documentUnit={documentUnit}
-                isInitial={isInitial}
-              />
-            )
-          })}
-
-          {/* Categorized extra params (user-created, assigned to this group) */}
-          {filteredExtras.map((param) => {
-            const modified = !expressionsEqual(displayValues[param.name] ?? "", originalExpressions[param.name] ?? "")
-            const unit = param.unit || ""
-            return (
-              <ExtraParamRow
-                key={param.name}
-                param={param}
-                currentGroupId={group.id}
-                groupSchemas={groupSchemas}
-                displayValue={displayValues[param.name] ?? ""}
-                modified={modified}
-                unit={unit}
-                allParamNames={allParamNames}
-                onChange={onChange}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                customCategories={customCategories}
-                onAddCustomCategory={onAddCustomCategory}
-                onRemoveCustomCategory={onRemoveCustomCategory}
-                documentUnit={documentUnit}
-              />
-            )
-          })}
-
-          {/* Pending (staged) params for this group */}
-          {filteredPending.map((p) => {
-            const unitDisplay = p.unitKind === "length" ? documentUnit : p.unitKind === "angle" ? "deg" : ""
-            return (
-              <div
-                key={p.id}
-                className="px-2 py-2 rounded-lg border-l-2 border-amber-400 bg-amber-50/40 dark:bg-amber-950/10"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-foreground">{p.name}</span>
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium leading-none">
-                        New
-                      </span>
-                    </div>
-                    {p.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <div className="w-[19px] shrink-0" />
-                    <input
-                      type="text"
-                      value={p.value}
-                      onChange={(e) => onPendingParamChange(p.id, e.target.value)}
-                      className="h-7 w-20 px-2 text-xs text-center tabular-nums rounded-lg border border-amber-400 bg-background focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    />
-                    <span className="w-[19px] shrink-0 text-xs text-muted-foreground text-center">
-                      {unitDisplay}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => onRemovePendingParam(p.id)}
-                    className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-muted-foreground hover:text-red-600 transition-colors shrink-0"
-                    title="Remove staged parameter"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Inline add form */}
-          {isAddFormOpen && (
-            <AddParamForm
-              groupId={group.id}
-              documentUnit={documentUnit}
-              allParamNames={allParamNames}
-              onCancel={onCloseAddForm}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+// Extracted components
+import {
+  expressionsEqual,
+  stripTrailingZeros,
+  GroupSection,
+  SortableGroupItem,
+  CustomCategorySection,
+  UncategorizedSection,
+} from "@/components/parameters"
 
 // ── Parameters page ────────────────────────────────────────────────
 
@@ -1332,7 +76,6 @@ export function ParametersPage({
   const [activeAddFormCustomCategoryId, setActiveAddFormCustomCategoryId] = useState<string | null>(null)
   const [customCategories, setCustomCategories] = useState<{ id: string; label: string }[]>([])
 
-  // Track previous mode and documentUnit to detect when they change
   const previousModeRef = useRef<string | undefined>(undefined)
   const previousDocUnitRef = useRef<string | undefined>(undefined)
 
@@ -1354,7 +97,6 @@ export function ParametersPage({
     if (!order) return payload.groups
     const map = new Map(payload.groups.map((g) => [g.id, g]))
     const ordered = order.filter((id) => map.has(id)).map((id) => map.get(id)!)
-    // Append any new groups not in saved order
     payload.groups.forEach((g) => { if (!order.includes(g.id)) ordered.push(g) })
     return ordered
   }, [payload, prefs.groupOrder])
@@ -1378,7 +120,6 @@ export function ParametersPage({
     ? sortedGroups.find((g) => g.id === activeGroupDragId)
     : null
 
-  // All known parameter names (schema + extra from design + pending) — used for duplicate validation
   const allParamNames = useMemo(() => {
     const names = new Set<string>()
     if (payload) {
@@ -1391,7 +132,7 @@ export function ParametersPage({
     return names
   }, [payload, pendingParams])
 
-  // Reset local state when payload changes
+  // ── Sync state from payload ─────────────────────────────────────
   useEffect(() => {
     if (!payload) return
 
@@ -1401,23 +142,17 @@ export function ParametersPage({
 
     for (const group of payload.groups) {
       for (const param of group.parameters) {
-        // For metric documents, prefer defaultMetric if expression is not available
         const isMetric = isMetricUnit(documentUnit) && param.unitKind === 'length'
         const defaultVal = isMetric && param.defaultMetric ? param.defaultMetric : param.default ?? ""
         const expr = param.expression ?? defaultVal ?? ""
-        // If expression is a bare parameter reference (e.g. "ScaleLengthBass"), keep it as-is
         const isParamRef = /^[A-Za-z_][A-Za-z0-9_]*$/.test(expr)
         const numericMatch = expr.match(/^([\d.]+)/)
-        // If expression doesn't start with a number (e.g. fraction like "( 3 / 16 ) * 1 in"),
-        // fall back to the schema default which is the decimal equivalent.
-        // Always use only the numeric part — never include the unit suffix.
         const rawDisplayVal = isParamRef
           ? expr
           : numericMatch
             ? numericMatch[1]
             : (defaultVal?.match(/^([\d.]+)/)?.[1] ?? expr)
 
-        // Strip trailing zeros for cleaner display
         const displayVal = isParamRef ? rawDisplayVal : stripTrailingZeros(rawDisplayVal)
 
         baseline[param.name] = displayVal
@@ -1435,9 +170,6 @@ export function ParametersPage({
       }
     }
 
-    // Initialize extra (uncategorized) parameters from extraParams array
-    // Extra params come from the design but aren't in the schema
-    // Always extract from expression (which is in user units), never use raw value (which is in cm)
     if (payload.extraParams) {
       for (const param of payload.extraParams) {
         const expr = param.expression ?? param.default ?? ""
@@ -1445,24 +177,18 @@ export function ParametersPage({
         const rawDisplayVal = numericMatch
           ? numericMatch[1]
           : (param.default?.match(/^([\d.]+)/)?.[1] ?? expr)
-
-        // Strip trailing zeros for cleaner display
         const displayVal = stripTrailingZeros(rawDisplayVal)
-
         baseline[param.name] = displayVal
         display[param.name] = displayVal
         paramMap[param.name] = { unit: param.unit ?? "" }
       }
     }
 
-    // Graduate pending params that now exist in Fusion (they were just created)
     if (pendingParams.length > 0) {
       const newlyCreated = new Set(payload.extra)
       setPendingParams((prev) => prev.filter((p) => !newlyCreated.has(p.name)))
     }
 
-    // Resolve parameter reference display values: if a param's display value is another
-    // param's name (e.g. ScaleLengthTreb = "ScaleLengthBass"), show the referenced value instead.
     for (const key of Object.keys(display)) {
       const val = display[key]
       if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(val) && display[val] !== undefined) {
@@ -1471,10 +197,7 @@ export function ParametersPage({
       }
     }
 
-    // Derive scale mode from payload
-    const trebVal = display["ScaleLengthTreb"] ?? ""
-
-    // If the raw expression for ScaleLengthTreb is a parameter reference, it's single-scale
+    // Derive scale mode
     const trebExpr = (() => {
       for (const group of payload.groups) {
         for (const param of group.parameters) {
@@ -1489,14 +212,13 @@ export function ParametersPage({
       ? "single"
       : (() => {
         const bass = parseFloat(display["ScaleLengthBass"] ?? "0")
-        const treb = parseFloat(trebVal)
-        const isMulti = Math.abs(bass - treb) > 0.001
-        return isMulti ? "multi" : "single"
+        const treb = parseFloat(display["ScaleLengthTreb"] ?? "0")
+        return Math.abs(bass - treb) > 0.001 ? "multi" : "single"
       })()
 
     setScaleMode(derivedScaleMode)
 
-    // Derive radius mode from payload
+    // Derive radius mode
     const heelRadiusExpr = (() => {
       for (const group of payload.groups) {
         for (const param of group.parameters) {
@@ -1514,14 +236,8 @@ export function ParametersPage({
       return ""
     })()
 
-    // Determine radius mode:
-    // - Straight: HeelRadius is a reference to NutRadius
-    // - Flat: Both are 10000 in (254000 mm)
-    // - Compound: Neither of the above
     const isRadiusReference = /^NutRadius$/i.test(heelRadiusExpr.trim())
-    const flatValueImperial = "10000"
-    const flatValueMetric = "254000"
-    const flatValue = isMetricUnit(documentUnit) ? flatValueMetric : flatValueImperial
+    const flatValue = isMetricUnit(documentUnit) ? "254000" : "10000"
     const isFlatNut = nutRadiusExpr.includes(flatValue)
     const isFlatHeel = heelRadiusExpr.includes(flatValue)
 
@@ -1532,16 +248,9 @@ export function ParametersPage({
 
     setRadiusMode(derivedRadiusMode)
 
-    // Detect mode changes (e.g. switching from live doc to fresh doc)
     const modeChanged = payload?.mode !== previousModeRef.current
     const docUnitChanged = documentUnit !== previousDocUnitRef.current
 
-    // Reset baseline when:
-    // - First load (no baseline yet)
-    // - After apply refresh in live mode — design values are the new truth
-    // - When mode changes (e.g. switching from live doc to fresh doc), BUT not when loading a template/import
-    //   (we want to preserve the live/initial baseline to show diffs against the loaded template)
-    // - When documentUnit changes (e.g. imperial defaults loaded first, then metric arrives)
     const shouldResetBaseline = !baselineSet || payload.mode === 'live' || docUnitChanged || (modeChanged && payload.mode !== 'template' && payload.mode !== 'imported')
 
     if (shouldResetBaseline) {
@@ -1555,8 +264,6 @@ export function ParametersPage({
     setDisplayValues(display)
     setEditStartValues({})
     setValidationErrors({})
-    // Only clear history on mode changes, not on every refresh
-    // This allows undo/redo to work even when the payload updates from Fusion
     if (modeChanged) {
       setHistory([])
       setHistoryIndex(-1)
@@ -1564,39 +271,33 @@ export function ParametersPage({
     }
   }, [payload, documentUnit])
 
-  // Re-validate all fields whenever displayValues or parameterMap changes
+  // ── Validation effect ──────────────────────────────────────────
   useEffect(() => {
     const newErrors: Record<string, string> = {}
 
     for (const [name, value] of Object.entries(displayValues)) {
-      if (!value) continue // Allow empty strings
+      if (!value) continue
 
-      // Skip validation for flat-radius sentinel values (intentionally exceed limits)
       if (radiusMode === "flat" && (name === "NutRadius" || name === "HeelRadius")) continue
       if (name === "HeelCurveRadius" && (value.includes("10000") || value.includes("254000"))) continue
 
       const limits = parameterMap[name]
-      if (!limits) {
-        continue // No limits defined
-      }
+      if (!limits) continue
 
-      // Try to parse the numeric part (handle optional minus sign, digits, optional decimal)
       const numericMatch = value.match(/^-?\d*\.?\d+/)
-      if (!numericMatch) continue // Can't parse as number
+      if (!numericMatch) continue
 
       const numValue = parseFloat(numericMatch[0])
       if (isNaN(numValue)) continue
 
-      // Use metric limits for mm documents, imperial for others
       const isLengthInMm = limits.unitKind === 'length' && isMetricUnit(documentUnit)
       const minVal = isLengthInMm ? limits.minMetric : limits.min
       const maxVal = isLengthInMm ? limits.maxMetric : limits.max
 
-      if (minVal == null && maxVal == null) {
-        continue // No limits defined for this unit system
-      }
+      if (minVal == null && maxVal == null) continue
 
       const unitSuffix = isLengthInMm ? ' mm' : ''
+
       if (minVal != null && numValue < minVal) {
         newErrors[name] = `Min: ${minVal.toFixed(1)}${unitSuffix}`
       } else if (maxVal != null && numValue > maxVal) {
@@ -1609,15 +310,14 @@ export function ParametersPage({
     }
   }, [displayValues, parameterMap, documentUnit, radiusMode])
 
+  // ── Derived values ─────────────────────────────────────────────
   const finalDisplayValues = useMemo(() => {
     const next = { ...displayValues }
     if (scaleMode === "single") {
-      const bassVal = displayValues["ScaleLengthBass"] ?? ""
-      next["ScaleLengthTreb"] = bassVal
+      next["ScaleLengthTreb"] = displayValues["ScaleLengthBass"] ?? ""
     }
     if (radiusMode === "straight") {
-      const nutVal = displayValues["NutRadius"] ?? ""
-      next["HeelRadius"] = nutVal
+      next["HeelRadius"] = displayValues["NutRadius"] ?? ""
     }
     return next
   }, [displayValues, scaleMode, radiusMode])
@@ -1638,9 +338,8 @@ export function ParametersPage({
   const canRedo = historyIndex < history.length - 1
   const hasValidationErrors = Object.keys(validationErrors).length > 0
 
+  // ── Handlers ────────────────────────────────────────────────────
   function handleParamChange(name: string, newVal: string) {
-    // Just update display value immediately (for responsive UI)
-    // Validation will happen via useEffect watching displayValues
     setDisplayValues((prev) => {
       const next = { ...prev, [name]: newVal }
       if (scaleMode === "single" && name === "ScaleLengthBass") {
@@ -1657,7 +356,6 @@ export function ParametersPage({
     const currentVal = currentValOverride ?? displayValues[name] ?? ""
     const startVal = editStartValues[name] ?? originalExpressions[name] ?? ""
 
-    // If no change, don't add to history
     if (expressionsEqual(currentVal, startVal)) {
       setEditStartValues((prev) => {
         const next = { ...prev }
@@ -1667,11 +365,9 @@ export function ParametersPage({
       return
     }
 
-    // Commit this edit to history as a single entry
     const trimmed = history.slice(0, historyIndex + 1)
     trimmed.push({ name, oldVal: startVal, newVal: currentVal })
 
-    // In single mode, also handle the mirrored scale
     if (scaleMode === "single" && name === "ScaleLengthBass") {
       const trebStart = editStartValues["ScaleLengthTreb"] ?? originalExpressions["ScaleLengthTreb"] ?? ""
       const trebCurrent = displayValues["ScaleLengthTreb"] ?? ""
@@ -1680,7 +376,6 @@ export function ParametersPage({
       }
     }
 
-    // In straight radius mode, also handle the mirrored radius
     if (radiusMode === "straight" && name === "NutRadius") {
       const heelStart = editStartValues["HeelRadius"] ?? originalExpressions["HeelRadius"] ?? ""
       const heelCurrent = displayValues["HeelRadius"] ?? ""
@@ -1694,22 +389,16 @@ export function ParametersPage({
     setHistory(capped)
     setHistoryIndex(capped.length - 1)
 
-    // Clear the edit start value for this field
     setEditStartValues((prev) => {
       const next = { ...prev }
       delete next[name]
-      if (name === "ScaleLengthBass") {
-        delete next["ScaleLengthTreb"]
-      }
-      if (name === "NutRadius") {
-        delete next["HeelRadius"]
-      }
+      if (name === "ScaleLengthBass") delete next["ScaleLengthTreb"]
+      if (name === "NutRadius") delete next["HeelRadius"]
       return next
     })
   }
 
   function handleParamFocus(name: string) {
-    // Record the starting value when field is focused
     if (!editStartValues.hasOwnProperty(name)) {
       setEditStartValues((prev) => ({
         ...prev,
@@ -1727,18 +416,6 @@ export function ParametersPage({
 
   function handleUndoTo(relativeIndex: number) {
     if (!canUndo) return
-    // Undo multiple steps
-    // relativeIndex is 0-based index from the dropdown list.
-    // The list is displayed as: history.slice(0, current + 1).reverse()
-    // So relativeIndex 0 is the most recent (current).
-    // We want to undo everything UP TO and INCLUDING that item.
-
-    // Example: History [A, B, C, D], Index = 3 (D)
-    // List shows: D, C, B, A
-    // Click C (relative index 1)
-    // We want to undo D and C.
-    // New index should be 1 (B).
-
     const stepsToUndo = relativeIndex + 1
     let newIndex = historyIndex
 
@@ -1763,11 +440,6 @@ export function ParametersPage({
 
   function handleRedoTo(relativeIndex: number) {
     if (!canRedo) return
-    // Redo multiple steps
-    // relativeIndex is 0-based index from the dropdown list.
-    // The list is displayed as history.slice(current + 1)
-    // So relativeIndex 0 is the next immediate item.
-
     const stepsToRedo = relativeIndex + 1
     let newIndex = historyIndex
 
@@ -1802,17 +474,10 @@ export function ParametersPage({
   function buildExpression(name: string, displayVal: string): string {
     const unit = parameterMap[name]?.unit || ""
     if (!displayVal) return ""
-
-    // In single scale mode, ScaleLengthTreb is always linked to ScaleLengthBass by reference
     if (scaleMode === "single" && name === "ScaleLengthTreb") return "ScaleLengthBass"
-
-    // In straight radius mode, HeelRadius is always linked to NutRadius by reference
     if (radiusMode === "straight" && name === "HeelRadius") return "NutRadius"
-
-    // If displayVal is a parameter reference (e.g., "ScaleLengthBass"), don't add unit suffix
     const isParameterRef = /^[A-Za-z_][A-Za-z0-9_]*$/.test(displayVal)
     if (isParameterRef) return displayVal
-
     if (!unit) return displayVal
     return `${displayVal} ${unit}`
   }
@@ -1830,6 +495,7 @@ export function ParametersPage({
     setCustomCategories((prev) => prev.filter((cat) => cat.id !== id))
   }
 
+  // ── Render ──────────────────────────────────────────────────────
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
@@ -1843,7 +509,6 @@ export function ParametersPage({
       {/* Scale & Radius mode selectors */}
       <div className="shrink-0 border-b border-border bg-muted/30">
         <div className="relative flex items-center justify-center gap-4 py-2.5 px-4">
-          {/* Scale length mode */}
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
               Scale Length:
@@ -1871,7 +536,6 @@ export function ParametersPage({
             </Select>
           </div>
 
-          {/* Fretboard radius mode */}
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
               Radius:
@@ -1949,7 +613,6 @@ export function ParametersPage({
           </div>
         </div>
 
-        {/* Error filter banner */}
         {showErrorFilter && hasValidationErrors && (
           <div className="px-4 pb-3">
             <div className="rounded-md border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40 px-3 py-2 text-xs text-red-800 dark:text-red-200 flex items-center justify-between gap-2">
@@ -1965,7 +628,6 @@ export function ParametersPage({
           </div>
         )}
 
-        {/* Status banners */}
         {showImportSuccess && (
           <div className="px-4 pb-3">
             <div className="rounded-md border border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/40 px-3 py-2 text-xs text-green-800 dark:text-green-200 flex items-center justify-between gap-2">
@@ -1984,7 +646,6 @@ export function ParametersPage({
           </div>
         )}
 
-        {/* Status banners */}
         {payload && ((isInitial && !dismissedWarnings.has("initial")) || (payload.missing.length > 0 && !dismissedWarnings.has("missing")) || (payload.extra.length > 0 && !dismissedWarnings.has("extra"))) && (
           <div className="px-4 pb-3 space-y-2">
             {isInitial && !dismissedWarnings.has("initial") && (
@@ -2093,7 +754,6 @@ export function ParametersPage({
                 </DragOverlay>
               </DndContext>
 
-              {/* Custom category sections — one per custom category */}
               {!isInitial && customCategories.map((cat) => (
                 <CustomCategorySection
                   key={cat.id}
@@ -2118,7 +778,6 @@ export function ParametersPage({
                 />
               ))}
 
-              {/* Uncategorized section — only extra params with no group assignment */}
               {payload.extraParams && payload.extraParams.some((p) => !p.group) && (
                 <UncategorizedSection
                   extraParams={payload.extraParams.filter((p) => !p.group)}
@@ -2181,11 +840,8 @@ export function ParametersPage({
                 groupId: p.groupId,
               }))
 
-              // Apply radius mode change first if changed
-              // But ONLY in Live Mode - Initial Mode has no parameters to modify yet
               if (radiusModeChanged && !isInitial) {
                 sendToPython("SET_RADIUS_MODE", { mode: radiusMode })
-                // Small delay to let radius mode apply before parameters
                 setTimeout(() => {
                   applyParameterChanges()
                 }, 200)
@@ -2204,17 +860,14 @@ export function ParametersPage({
                     }
                   }
 
-                  // In Initial Mode, apply radius mode by setting parameter values directly
                   if (radiusModeChanged) {
                     const flatValue = isMetricUnit(payload?.documentUnit) ? '254000 mm' : '10000 in'
                     if (radiusMode === 'flat') {
                       changedParams['NutRadius'] = flatValue
                       changedParams['HeelRadius'] = flatValue
                     } else if (radiusMode === 'straight') {
-                      // HeelRadius will reference NutRadius
                       changedParams['HeelRadius'] = 'NutRadius'
                     } else if (radiusMode === 'compound') {
-                      // Ensure both have independent values (use template defaults if not changed)
                       if (!changedParams['NutRadius']) {
                         changedParams['NutRadius'] = originalExpressions['NutRadius'] || ''
                       }

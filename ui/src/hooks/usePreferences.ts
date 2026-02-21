@@ -2,8 +2,8 @@ import { useState, useEffect } from "react"
 import { sendToPython, onPythonMessage } from "@/lib/fusion-bridge"
 
 export interface UserPreferences {
-  /** App version when user checked "Don't show again" on Beta Disclaimer, or null */
-  betaDisclaimerDismissedVersion: string | null
+  /** If true, hide the Important Information disclaimer across sessions */
+  hideBetaDisclaimer: boolean
   /** Decimal places for Reports page (3-9) */
   reportsPrecision: number
   /** Custom group ordering by ID, or null for default schema order */
@@ -11,7 +11,7 @@ export interface UserPreferences {
 }
 
 const DEFAULTS: UserPreferences = {
-  betaDisclaimerDismissedVersion: null,
+  hideBetaDisclaimer: false,
   reportsPrecision: 4,
   groupOrder: null,
 }
@@ -21,17 +21,28 @@ const STORAGE_KEY = "pgfm_preferences"
 /** Legacy keys that get migrated into the unified store on first load */
 const LEGACY_KEYS = {
   betaVersion: "beta-disclaimer-version",
+  betaHide: "hideBetaDisclaimer",
   precision: "reportsPrecision",
+  betaSession: "pgfm_beta_disclaimer_dismissed_session",
 } as const
 
 function migrateLegacyKeys(): Partial<UserPreferences> {
   const patch: Partial<UserPreferences> = {}
 
+  const legacyHide = localStorage.getItem(LEGACY_KEYS.betaHide)
+  if (legacyHide === "true") {
+    patch.hideBetaDisclaimer = true
+    localStorage.removeItem(LEGACY_KEYS.betaHide)
+  }
+
   const legacyBeta = localStorage.getItem(LEGACY_KEYS.betaVersion)
   if (legacyBeta) {
-    patch.betaDisclaimerDismissedVersion = legacyBeta
+    patch.hideBetaDisclaimer = true
     localStorage.removeItem(LEGACY_KEYS.betaVersion)
   }
+
+  // Clean up old sessionStorage key from previous implementation
+  sessionStorage.removeItem(LEGACY_KEYS.betaSession)
 
   const legacyPrecision = localStorage.getItem(LEGACY_KEYS.precision)
   if (legacyPrecision) {
@@ -49,11 +60,21 @@ function loadFromStorage(): UserPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const stored = JSON.parse(raw) as Partial<UserPreferences>
-      return { ...DEFAULTS, ...stored }
+      const stored = JSON.parse(raw) as Partial<UserPreferences> & {
+        betaDisclaimerDismissedVersion?: string | null
+      }
+      const normalized: Partial<UserPreferences> = {
+        ...stored,
+        hideBetaDisclaimer: Boolean(
+          stored.hideBetaDisclaimer ||
+          (typeof stored.betaDisclaimerDismissedVersion === "string" &&
+            stored.betaDisclaimerDismissedVersion.length > 0)
+        ),
+      }
+      return { ...DEFAULTS, ...normalized }
     }
   } catch {
-    // Corrupted — fall through
+    // Corrupted, fall through
   }
 
   const migrated = migrateLegacyKeys()
@@ -73,27 +94,33 @@ function saveToStorage(prefs: UserPreferences): void {
  *   - On first palette load (ready signal)
  *   - Every time the palette is re-shown (stop/run, button click)
  *
- * Returns [prefs, update, loadCount] where loadCount increments every time
- * Python sends preferences — App.tsx uses this to re-evaluate the disclaimer
- * even when betaDisclaimerDismissedVersion hasn't changed.
+ * Returns [prefs, update].
  */
-export function usePreferences(): [UserPreferences, (patch: Partial<UserPreferences>) => void, number] {
+export function usePreferences(): [UserPreferences, (patch: Partial<UserPreferences>) => void] {
   const [prefs, setPrefs] = useState<UserPreferences>(loadFromStorage)
-  const [loadCount, setLoadCount] = useState(0)
 
   useEffect(() => {
     const handlePreferencesLoaded = (data: string) => {
       try {
-        const fromPython = JSON.parse(data) as Partial<UserPreferences>
+        const fromPython = JSON.parse(data) as Partial<UserPreferences> & {
+          betaDisclaimerDismissedVersion?: string | null
+        }
         console.log('[PREFS] Received from Python:', JSON.stringify(fromPython))
-        // Python is authoritative — always overwrite with its values
-        const next = { ...loadFromStorage(), ...fromPython }
+        const normalizedFromPython: Partial<UserPreferences> = {
+          ...fromPython,
+          hideBetaDisclaimer: Boolean(
+            fromPython.hideBetaDisclaimer ||
+            (typeof fromPython.betaDisclaimerDismissedVersion === "string" &&
+              fromPython.betaDisclaimerDismissedVersion.length > 0)
+          ),
+        }
+
+        // Python is authoritative, always overwrite with its values
+        const next = { ...loadFromStorage(), ...normalizedFromPython }
         saveToStorage(next)
         setPrefs(next)
-        setLoadCount(c => c + 1)
       } catch (e) {
         console.error('[PREFS] Failed to parse preferences from Python:', e)
-        setLoadCount(c => c + 1)
       }
     }
 
@@ -112,5 +139,5 @@ export function usePreferences(): [UserPreferences, (patch: Partial<UserPreferen
     setPrefs(next)
   }
 
-  return [prefs, update, loadCount]
+  return [prefs, update]
 }
