@@ -13,11 +13,10 @@ Use this to:
 - Reference all 47 available parameters
 
 How to use:
-1. Open defaults.json in any text editor
+1. Open user/defaults.json in any text editor
 2. Edit the parameters you want to customize
-3. Save with a new name (e.g., my_bass.json)
-4. Move it to presets/ subfolder
-5. Load it from the add-in's Templates page
+3. Save with a new name (e.g., my_bass.json) in the user/ subfolder
+4. Load it from the add-in's Templates page
 
 Example:
 ```json
@@ -38,8 +37,8 @@ Example:
 
 ## Files & Folders
 
-### defaults.json
-Parameter reference file with all 47 editable parameters at their schema defaults. Located in this folder (templates/).
+### defaults.json (in user/ subfolder)
+Parameter reference file with all 47 editable parameters at their schema defaults. Located in user/ subfolder for easy access when opening the templates folder.
 
 ### Preset Templates (presets/)
 Built-in templates you can load directly in the add-in:
@@ -83,7 +82,7 @@ Open the file and modify only the parameters you want to customize:
 ```
 
 ### Step 2: Save with a New Name
-Save your file as presets/my_template.json (place it in the presets/ subfolder)
+Save your file as my_template.json in the user/ subfolder
 
 ### Step 3: Load in the Add-in
 1. Open the Parametric Guitar Fretboard Maker

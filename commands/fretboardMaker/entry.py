@@ -495,8 +495,8 @@ def _on_open_templates_folder():
     """Open the user templates folder in Windows Explorer."""
     os.makedirs(USER_TEMPLATES_DIR, exist_ok=True)
     try:
-        os.startfile(TEMPLATES_DIR)
-        futil.log(f'{CMD_NAME}: Opened templates folder: {TEMPLATES_DIR}')
+        os.startfile(USER_TEMPLATES_DIR)
+        futil.log(f'{CMD_NAME}: Opened templates folder: {USER_TEMPLATES_DIR}')
     except Exception as e:
         futil.log(f'{CMD_NAME}: Error opening templates folder: {e}',
                   adsk.core.LogLevels.ErrorLogLevel)
