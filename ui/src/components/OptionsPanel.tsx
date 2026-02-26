@@ -23,8 +23,6 @@ import {
 } from "lucide-react"
 
 interface OptionsPanelProps {
-    isOpen?: boolean
-    onOpenChange?: (open: boolean) => void
     onHeelCurveToggle?: (enabled: boolean) => void
 }
 
@@ -95,12 +93,12 @@ const ACTION_BUTTONS = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurveToggle: _onHeelCurveToggle }: OptionsPanelProps) {
+export function OptionsPanel({ onHeelCurveToggle: _onHeelCurveToggle }: OptionsPanelProps) {
     const [groupStates, setGroupStates] = useState<Record<string, boolean>>({})
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [applyingGroups, setApplyingGroups] = useState<Set<string>>(new Set())
-    const [internalOpen, setInternalOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
 
     // Action button state
     const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
@@ -113,10 +111,8 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
     )
     const [pendingActionId, setPendingActionId] = useState<string | null>(null)
 
-    const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen
     const handleOpenChange = (open: boolean) => {
-        setInternalOpen(open)
-        onOpenChange?.(open)
+        setIsOpen(open)
     }
 
     const refreshGroupStates = useCallback(() => {
@@ -355,10 +351,10 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
     )
 
     return (
-        <Drawer open={isOpen} onOpenChange={handleOpenChange} direction="right">
-            <DrawerTrigger asChild>
-                <Tooltip>
-                    <TooltipTrigger asChild>
+        <Tooltip>
+            <Drawer open={isOpen} onOpenChange={handleOpenChange} direction="right">
+                <TooltipTrigger asChild>
+                    <DrawerTrigger asChild>
                         <Button
                             variant="outline"
                             size="sm"
@@ -367,13 +363,13 @@ export function OptionsPanel({ isOpen: controlledOpen, onOpenChange, onHeelCurve
                             <Layers size={14} />
                             <span className="hidden sm:inline">Options</span>
                         </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Customization Options</TooltipContent>
-                </Tooltip>
-            </DrawerTrigger>
-            <DrawerContent className="flex flex-col w-[360px] p-0">
-                {drawerContent}
-            </DrawerContent>
-        </Drawer>
+                    </DrawerTrigger>
+                </TooltipTrigger>
+                <DrawerContent className="flex flex-col w-[360px] p-0">
+                    {drawerContent}
+                </DrawerContent>
+            </Drawer>
+            <TooltipContent>Customization Options</TooltipContent>
+        </Tooltip>
     )
 }

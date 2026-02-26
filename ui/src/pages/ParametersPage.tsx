@@ -68,7 +68,6 @@ export function ParametersPage({
   const [radiusMode, setRadiusMode] = useState<"compound" | "straight" | "flat">("compound")
   const [originalRadiusMode, setOriginalRadiusMode] = useState<"compound" | "straight" | "flat">("compound")
   const [baselineSet, setBaselineSet] = useState(false)
-  const [timelineSheetOpen, setTimelineSheetOpen] = useState(false)
   const [editStartValues, setEditStartValues] = useState<Record<string, string>>({})
   const [showErrorFilter, setShowErrorFilter] = useState(false)
   const [pendingParams, setPendingParams] = useState<PendingParam[]>([])
@@ -615,8 +614,6 @@ export function ParametersPage({
           {!isInitial && (
             <div className="ml-auto">
               <OptionsPanel
-                isOpen={timelineSheetOpen}
-                onOpenChange={setTimelineSheetOpen}
                 onHeelCurveToggle={(enabled: boolean) => {
                   const flatValue = isMetricUnit(documentUnit) ? '254000 mm' : '10000 in'
                   const defaultValue = isMetricUnit(documentUnit) ? '102 mm' : '4 in'
