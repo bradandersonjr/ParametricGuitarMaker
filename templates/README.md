@@ -2,24 +2,24 @@
 
 This folder contains parameter templates and reference files for the Parametric Guitar Fretboard Maker.
 
-## 📋 Quick Start
+## Quick Start
 
-### `defaults.json` — Parameter Reference File
-**Complete list of all editable parameters** with their default values (imperial and metric).
+### defaults.json - Parameter Reference File
+Complete list of all editable parameters with their default values (imperial and metric).
 
-**Use this to:**
+Use this to:
 - Edit parameters directly in a text editor without opening the add-in
 - Create new templates by copying and modifying this file
 - Reference all 47 available parameters
 
-**How to use:**
-1. Open `defaults.json` in any text editor
+How to use:
+1. Open defaults.json in any text editor
 2. Edit the parameters you want to customize
-3. Save with a new name (e.g., `my_bass.json`)
-4. Move it to `presets/` subfolder
+3. Save with a new name (e.g., my_bass.json)
+4. Move it to presets/ subfolder
 5. Load it from the add-in's Templates page
 
-**Example:**
+Example:
 ```json
 {
   "name": "My Custom Guitar",
@@ -36,29 +36,35 @@ This folder contains parameter templates and reference files for the Parametric 
 
 ---
 
-## 📁 Files & Folders
+## Files & Folders
 
-### Preset Templates (`presets/`)
+### defaults.json
+Parameter reference file with all 47 editable parameters at their schema defaults. Located in this folder (templates/).
+
+### Preset Templates (presets/)
 Built-in templates you can load directly in the add-in:
-- `standard_guitar.json` — 22-fret single-scale 6-string
-- `bass_guitar.json` — 21-fret 4-string bass
-- `multiscale_7string.json` — 24-fret fan-fret 7-string
+- standard_guitar.json - 22-fret single-scale 6-string
+- bass_guitar.json - 21-fret 4-string bass
+- multiscale_7string.json - 24-fret fan-fret 7-string
+
+### User Templates (user/)
+Custom templates you create are saved here automatically. Populated when you use "Save as Template" in the add-in.
 
 ### Fusion Template Files
 Design templates used internally:
-- `fretboard_imperial.f3d` — Template for imperial (inch) documents
-- `fretboard_metric.f3d` — Template for metric (mm) documents
+- fretboard_imperial.f3d - Template for imperial (inch) documents
+- fretboard_metric.f3d - Template for metric (mm) documents
 
 ### Parameter Reference
-- `ExportedParameters.csv` — All 76 parameters exported from Fusion
-- `ParametersImperial.csv` — Parameters with imperial defaults
-- `ParametersMetric.csv` — Parameters with metric defaults
+- ExportedParameters.csv - All 76 parameters exported from Fusion
+- ParametersImperial.csv - Parameters with imperial defaults
+- ParametersMetric.csv - Parameters with metric defaults
 
 ---
 
-## 🔧 Creating Custom Templates
+## Creating Custom Templates
 
-### Step 1: Edit `defaults.json`
+### Step 1: Edit defaults.json
 Open the file and modify only the parameters you want to customize:
 
 ```json
@@ -71,14 +77,13 @@ Open the file and modify only the parameters you want to customize:
     "FretCount": "24",
     "StringCount": "6",
     "ScaleLengthBass": "25.50",
-    "ScaleLengthBass_metric": "648",
-    // ... more parameters
+    "ScaleLengthBass_metric": "648"
   }
 }
 ```
 
 ### Step 2: Save with a New Name
-Save your file as `presets/my_template.json`
+Save your file as presets/my_template.json (place it in the presets/ subfolder)
 
 ### Step 3: Load in the Add-in
 1. Open the Parametric Guitar Fretboard Maker
@@ -88,22 +93,22 @@ Save your file as `presets/my_template.json`
 
 ---
 
-## 📝 Parameter Format
+## Parameter Format
 
-- **Unitless parameters** (counts, fractions): `"FretCount": "24"`
-- **Imperial lengths** (inches): `"ScaleLengthBass": "25.50"`
-- **Metric lengths** (millimeters): `"ScaleLengthBass_metric": "648"`
+- Unitless parameters (counts, fractions): "FretCount": "24"
+- Imperial lengths (inches): "ScaleLengthBass": "25.50"
+- Metric lengths (millimeters): "ScaleLengthBass_metric": "648"
 
 All length parameters should include both imperial and metric variants for full compatibility.
 
 ---
 
-## 🎸 Fusion Template Files (Advanced)
+## Fusion Template Files (Advanced)
 
-If you need to modify the base Fusion templates (`fretboard_imperial.f3d` or `fretboard_metric.f3d`):
+If you need to modify the base Fusion templates (fretboard_imperial.f3d or fretboard_metric.f3d):
 
-**Requirements:**
+Requirements:
 - Both files must use the same user parameter names
-- Include a `TEMPLATE_VERSION` user parameter (e.g., "1.0.0")
+- Include a TEMPLATE_VERSION user parameter (e.g., "1.0.0")
 - Save with timeline marker at start (no geometry visible on initial import)
 - Fretboard should be its own component (not loose geometry in the root)
