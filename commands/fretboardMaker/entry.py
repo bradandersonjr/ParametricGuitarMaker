@@ -527,7 +527,7 @@ def _scan_template_dir(directory, is_readonly, is_metric, schema_version):
 
     templates = []
     for fname in sorted(os.listdir(directory)):
-        if not fname.endswith('.json'):
+        if not fname.endswith('.json') or fname.startswith('_'):
             continue
         data = _load_template_file(os.path.join(directory, fname))
         if not data:
