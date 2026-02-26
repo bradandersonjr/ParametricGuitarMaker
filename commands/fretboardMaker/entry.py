@@ -40,10 +40,7 @@ ICON_FOLDER = os.path.join(
 # ── Template paths ──────────────────────────────────────────────────
 TEMPLATES_DIR = os.path.join(config.ADDIN_ROOT, 'templates')
 PRESETS_DIR = os.path.join(config.ADDIN_ROOT, 'templates', 'presets')
-USER_TEMPLATES_DIR = os.path.join(
-    os.environ.get('APPDATA', os.path.expanduser('~')),
-    'ParametricGuitarFretboardMaker', 'templates'
-)
+USER_TEMPLATES_DIR = os.path.join(config.ADDIN_ROOT, 'templates', 'user')  # User templates in add-in folder
 
 # ── Palette config ──────────────────────────────────────────────────
 PALETTE_ID = config.PALETTE_ID
