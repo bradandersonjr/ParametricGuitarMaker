@@ -334,6 +334,24 @@ export function TemplatesPage({ payload, templateList, onTemplateLoaded }: Templ
             )}
           </CollapsibleSection>
 
+          {/* Alternative: Edit JSON directly */}
+          <section className="border border-border rounded-lg p-3 bg-muted/30">
+            <h2 className="text-xs font-semibold font-heading mb-1.5">💡 Tip: Edit JSON Directly</h2>
+            <p className="text-xs text-muted-foreground mb-2">
+              Prefer a text editor? Copy <code className="bg-background px-1 rounded text-[10px]">defaults.json</code> from the templates folder, edit it, and save as a new template.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-xs px-2"
+              onClick={() => sendToPython("OPEN_TEMPLATES_FOLDER")}
+              title="Open templates folder to find defaults.json"
+            >
+              <FolderOpen className="size-3 mr-1" />
+              Open Templates Folder
+            </Button>
+          </section>
+
           {/* User templates */}
           <div className="flex items-center justify-between">
             <span />
