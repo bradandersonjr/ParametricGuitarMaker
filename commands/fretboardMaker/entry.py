@@ -121,11 +121,32 @@ _ACTION_HANDLERS = {
 
 
 # ═══════════════════════════════════════════════════════════════════
+# Initialization
+# ═══════════════════════════════════════════════════════════════════
+
+def _ensure_defaults_readonly():
+    """Ensure defaults.json is read-only to prevent accidental overwrite."""
+    defaults_path = os.path.join(USER_TEMPLATES_DIR, 'defaults.json')
+    try:
+        if os.path.exists(defaults_path):
+            import stat
+            # Set file to read-only (remove write permissions)
+            current_perms = os.stat(defaults_path).st_mode
+            os.chmod(defaults_path, current_perms & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH)
+    except Exception as e:
+        # Log but don't fail if we can't set permissions
+        futil.log(f'{CMD_NAME}: Could not set read-only on defaults.json: {e}', force_console=True)
+
+
+# ═══════════════════════════════════════════════════════════════════
 # Start / Stop
 # ═══════════════════════════════════════════════════════════════════
 
 def start(is_startup=False):
     """Register the toolbar button when the add-in starts."""
+
+    # Ensure defaults.json is read-only to prevent accidental overwrite
+    _ensure_defaults_readonly()
 
     # Clean up any stale control/definition from a previous run.
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
