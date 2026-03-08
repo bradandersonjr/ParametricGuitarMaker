@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { sendToPython } from "@/lib/fusion-bridge"
 import { isMetricUnit } from "@/lib/units"
 import type { GuitarTemplate, TemplateListPayload, ModelPayload } from "@/types"
-import { BookMarked, Trash2, Download, Save, Lock, ChevronDown, ChevronRight, FolderOpen } from "lucide-react"
+import { BookMarked, Trash2, Download, Save, Lock, ChevronDown, ChevronRight, FolderOpen, Upload } from "lucide-react"
 
 interface TemplatesPageProps {
   payload: ModelPayload | null
@@ -171,6 +171,8 @@ export function TemplatesPage({ payload, templateList, onTemplateLoaded }: Templ
   const [loadedId, setLoadedId] = useState<string | null>(null)
   const [waitingForLoad, setWaitingForLoad] = useState(false)
   const [payloadAtLoadTime, setPayloadAtLoadTime] = useState<ModelPayload | null>(null)
+  const [csvError, setCsvError] = useState("")
+  const csvInputRef = useRef<HTMLInputElement>(null)
 
   // Request template list on mount
   useEffect(() => {
@@ -199,6 +201,22 @@ export function TemplatesPage({ payload, templateList, onTemplateLoaded }: Templ
 
   const handleDelete = useCallback((template: GuitarTemplate) => {
     sendToPython("DELETE_TEMPLATE", { id: template.id })
+  }, [])
+
+  const handleCsvImport = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      setCsvError("")
+      const csvContent = await file.text()
+      sendToPython("IMPORT_CSV", { csv: csvContent })
+    } catch (err) {
+      setCsvError(`Failed to read file: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      // Reset the input so the same file can be imported again
+      if (csvInputRef.current) csvInputRef.current.value = ""
+    }
   }, [])
 
   const handleSave = () => {
@@ -333,6 +351,43 @@ export function TemplatesPage({ payload, templateList, onTemplateLoaded }: Templ
               </div>
             )}
           </CollapsibleSection>
+
+          {/* CSV Import - Coming Soon */}
+          <section className="border border-border rounded-lg p-3 bg-muted/30 opacity-50 pointer-events-none">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <h2 className="text-xs font-semibold font-heading">Import from CSV</h2>
+              <span className="text-[10px] font-semibold px-2 py-1 rounded bg-muted text-muted-foreground">
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">
+              Export a template from Google Sheets as CSV and import it here. The CSV should have columns: <code className="bg-background px-1 rounded text-[10px]">name</code>, <code className="bg-background px-1 rounded text-[10px]">description</code>, and parameter columns like <code className="bg-background px-1 rounded text-[10px]">FretCount</code>, <code className="bg-background px-1 rounded text-[10px]">StringCount</code>, etc.
+            </p>
+            <div className="flex gap-2">
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCsvImport}
+                className="hidden"
+                disabled
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-xs px-2"
+                onClick={() => csvInputRef.current?.click()}
+                title="Select a CSV file to import"
+                disabled
+              >
+                <Upload className="size-3 mr-1" />
+                Import CSV
+              </Button>
+            </div>
+            {csvError && (
+              <p className="text-[10px] text-destructive mt-2">{csvError}</p>
+            )}
+          </section>
 
           {/* Alternative: Edit JSON directly */}
           <section className="border border-border rounded-lg p-3 bg-muted/30">

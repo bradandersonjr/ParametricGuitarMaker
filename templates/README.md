@@ -55,9 +55,8 @@ Design templates used internally:
 - fretboard_metric.f3d - Template for metric (mm) documents
 
 ### Parameter Reference
-- ExportedParameters.csv - All 76 parameters exported from Fusion
-- ParametersImperial.csv - Parameters with imperial defaults
-- ParametersMetric.csv - Parameters with metric defaults
+- ExportedParametersImperial.csv - All 76 parameters exported from Fusion (imperial/inch units)
+- ExportedParametersMetric.csv - All 76 parameters exported from Fusion (metric/mm units)
 
 ---
 

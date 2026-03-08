@@ -209,10 +209,10 @@ export function OptionsPanel({ onHeelCurveToggle: _onHeelCurveToggle }: OptionsP
     const handleActionButton = (btn: typeof ACTION_BUTTONS[number]) => {
         setActionLoading(prev => ({ ...prev, [btn.id]: true }))
         setPendingActionId(btn.id)
-        const nextIndex = (actionIndex[btn.id] ?? 0) + 1
         const currentIndex = actionIndex[btn.id] ?? 0
+        const nextIndex = ((actionIndex[btn.id] ?? 0) + 1) % btn.states.length
         const payload = btn.buildPayload(nextIndex, currentIndex)
-        setActionIndex(prev => ({ ...prev, [btn.id]: nextIndex % btn.states.length }))
+        setActionIndex(prev => ({ ...prev, [btn.id]: nextIndex }))
         sendToPython(btn.fusionAction, payload)
     }
 
@@ -251,6 +251,11 @@ export function OptionsPanel({ onHeelCurveToggle: _onHeelCurveToggle }: OptionsP
                         <X size={14} />
                     </button>
                 </DrawerClose>
+            </div>
+
+            {/* ── Info hint ── */}
+            <div className="mx-4 mt-3 shrink-0 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                Each change triggers a full parametric recalculation — responses may take a moment.
             </div>
 
             {/* ── Error banner ── */}

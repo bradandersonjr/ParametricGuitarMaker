@@ -13,11 +13,30 @@ export function ChangelogPage() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
 
+          {/* Version 0.3.0 */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <h2 className="text-sm font-semibold font-heading">v0.3.0</h2>
+              <span className="text-xs text-muted-foreground">Current</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">Options drawer, toggles, and user preferences</p>
+            <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc list-inside">
+              <li>Customization Options drawer: toggle Fret Slot Cuts, Nut Slot, Fret Markers, and Heel Curve Fillet</li>
+              <li>Zero Fret, Blind Frets, and Heel Curve action buttons</li>
+              <li>Fret marker style switch: Circles or Offset hole positions</li>
+              <li>Radius mode redesigned as three independent buttons: Compound, Straight, Flat</li>
+              <li>Draggable group reordering in the Parameters page</li>
+              <li>Persistent user preferences synced between Python backend and UI</li>
+              <li>Beta disclaimer "Don't show again" checkbox, version-aware</li>
+              <li>CSV template import infrastructure (Coming Soon)</li>
+            </ul>
+          </div>
+
           {/* Version 0.2.0 */}
           <div>
             <div className="flex items-baseline gap-2 mb-2">
               <h2 className="text-sm font-semibold font-heading">v0.2.0</h2>
-              <span className="text-xs text-muted-foreground">Current</span>
+              <span className="text-xs text-muted-foreground">2026-02-17</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2">Units, validation, and custom categories</p>
             <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc list-inside">

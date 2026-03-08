@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-07
+
+### Added
+- Customization Options drawer with toggles for Fret Slot Cuts, Nut Slot, Fret Markers, and Heel Curve Fillet
+- Zero Fret action button: toggle Zero Fret Slot Cut suppression and ZeroFretAdjust parameter
+- Blind Frets action button: toggle BlindFret parameter between enabled/disabled
+- Heel Curve action button: toggle HeelCurveRadius between user value and flat (10000 in)
+- Fret Markers style button: switch marker hole positions between Circles and Offset selection sets
+- Fretboard radius mode buttons: Compound, Straight, and Flat — independent buttons replacing a single cycling control
+- Draggable group reordering in the Parameters page, persisted via user preferences
+- Persistent user preferences system synced between Python backend (filesystem) and React (localStorage)
+- Beta disclaimer "Don't show again" checkbox, version-aware with per-release dismissal
+- CSV template import infrastructure: backend parser, handler, guide, and sample file (UI marked Coming Soon)
+
+### Changed
+- Fret Slot Cuts toggle now automatically synchronizes Zero Fret Slot Cut suppression when Zero Fret is enabled
+- Radius mode redesigned from single cycling button to three independent action buttons for clarity
+- Options drawer renamed from TimelinePanel to OptionsPanel to better reflect its purpose
+- "Quick Load Default" label shown on the initial-mode import button when no changes have been made
+
+### Fixed
+- Flat radius mode not applying correctly in Initial Mode before fretboard creation
+- Radius mode button cycling past the last state sending an undefined selection set name to the backend
+- initialChangeCount calculation using `||` (OR) instead of `+` (addition), masking zero-change state
+
 ## [0.2.0] - 2026-02-17
 
 ### Added

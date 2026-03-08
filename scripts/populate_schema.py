@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Populate parameters.schema.json from ExportedParameters.csv
+Populate parameters.schema.json from ExportedParametersImperial.csv
 
 This script reads the exported parameters from the Fusion template and updates
 the schema JSON with actual values, expressions, and metadata.
+
+Use ExportedParametersImperial.csv as the source of truth for expressions and
+default values. ExportedParametersMetric.csv is used separately to update
+defaultMetric values in the schema.
 """
 
 import csv
@@ -12,7 +16,7 @@ import re
 from pathlib import Path
 
 def parse_csv(csv_path):
-    """Parse ExportedParameters.csv and extract parameter data."""
+    """Parse ExportedParametersImperial.csv and extract parameter data."""
     params = {}
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
@@ -149,7 +153,7 @@ def update_schema(schema_path, csv_data):
     return schema
 
 def main():
-    csv_path = Path('templates/ExportedParameters.csv')
+    csv_path = Path('templates/ExportedParametersImperial.csv')
     schema_path = Path('schema/parameters.schema.json')
 
     if not csv_path.exists():

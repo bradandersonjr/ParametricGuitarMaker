@@ -1,0 +1,10 @@
+name,description,FretCount,StringCount,ScaleLengthBass,ScaleLengthTreb,NutWidth,BridgeWidth
+Standard Electric,Classic 6-string single-scale guitar with modern dimensions,22,6,25.5,25.5,1.688,2.187
+Extended Range Electric,24-fret guitar for extended range playing,24,6,25.5,25.5,1.75,2.25
+Multiscale 7-String,Fan-fret 7-string with 27 inch bass and 25.5 inch treble scale,24,7,27.0,25.5,1.875,2.375
+Bass 4-String,Long-scale 4-string bass with traditional dimensions,21,4,34.0,34.0,1.5,2.25
+Bass 5-String,5-string bass with wide string spacing,24,5,34.0,34.0,1.75,2.5
+Classical Guitar,Classical nylon-string guitar with traditional proportions,19,6,25.6,25.6,2.0,3.0
+Travel Guitar,Compact 3/4 size acoustic guitar,18,6,22.5,22.5,1.5,1.875
+Baritone Guitar,Low-tuned 6-string with extra scale length,22,6,27.0,27.0,1.75,2.25
+Soprano Ukulele,Small 4-string ukulele,12,4,13.5,13.5,1.375,1.75

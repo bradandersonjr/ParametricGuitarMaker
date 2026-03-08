@@ -15,6 +15,7 @@ from ...lib import fusionAddInUtils as futil
 from ... import config
 from ...lib import parameter_bridge
 from ...lib import preferences
+from ...lib import csv_converter
 from ...lib.deferred_ops import make_deferred_op
 
 app = adsk.core.Application.get()
@@ -381,6 +382,9 @@ def palette_incoming(args: adsk.core.HTMLEventArgs):
 
     elif action == 'IMPORT_SHARE':
         _on_import_share(args.data)
+
+    elif action == 'IMPORT_CSV':
+        _on_import_csv(args.data)
 
     elif action == 'SET_PARAM_CATEGORY':
         _on_set_param_category(args.data)
@@ -816,6 +820,61 @@ def _on_import_share(data_json):
     if palette:
         palette.sendInfoToHTML('PUSH_MODEL_STATE', json.dumps(payload))
     futil.log(f'{CMD_NAME}: Imported share data ({len(parameters)} params)')
+
+
+def _on_import_csv(data_json):
+    """Import templates from CSV content and save them as user templates."""
+    try:
+        data = json.loads(data_json)
+    except Exception as e:
+        futil.log(f'{CMD_NAME}: Bad IMPORT_CSV data: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    csv_content = data.get('csv', '')
+    if not csv_content:
+        futil.log(f'{CMD_NAME}: IMPORT_CSV — no CSV content provided',
+                  adsk.core.LogLevels.WarningLogLevel)
+        return
+
+    try:
+        templates = csv_converter.csv_to_templates(csv_content)
+    except ValueError as e:
+        futil.log(f'{CMD_NAME}: CSV parsing failed: {e}',
+                  adsk.core.LogLevels.ErrorLogLevel)
+        return
+
+    # Save each template as a user template
+    os.makedirs(USER_TEMPLATES_DIR, exist_ok=True)
+    saved_count = 0
+
+    for template in templates:
+        template_name = template.get('name', '').strip()
+        if not template_name:
+            continue
+
+        # Create a safe filename (use name as ID, sanitized)
+        safe_name = re.sub(r'[^\w\s-]', '', template_name)[:50].strip()
+        if not safe_name:
+            safe_name = f'template_{saved_count + 1}'
+
+        template_data = {
+            'name': template_name,
+            'description': template.get('description', ''),
+            'schemaVersion': '0.3.0',
+            'parameters': template.get('parameters', {}),
+        }
+
+        filepath = os.path.join(USER_TEMPLATES_DIR, f'{safe_name}.json')
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(template_data, f, indent=2, ensure_ascii=False)
+            saved_count += 1
+        except Exception as e:
+            futil.log(f'{CMD_NAME}: Failed to save template "{template_name}": {e}',
+                      adsk.core.LogLevels.WarningLogLevel)
+
+    futil.log(f'{CMD_NAME}: Imported {saved_count}/{len(templates)} templates from CSV')
 
 
 # ═══════════════════════════════════════════════════════════════════
