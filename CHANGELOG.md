@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-03-08
+
+### Changed
+- Expanded parameter limits to support bass guitars, ukuleles, and extended-range instruments
+  - FretCount minimum: 12 → 4 (supports ukuleles, mandolins, travel guitars)
+  - StringCount range: 4–12 → 1–18 (supports ukulele, bass, extended-range, harp guitars)
+  - ScaleLength range: 20–36 in → 10–45 in (ukulele ~13 in through long-scale bass ~43 in)
+  - String gauges maximum: 0.1 in → 0.2 in (accommodates heavy bass strings)
+  - NutLength, NutSlotSpacing, SaddleSpacing expanded for wider/narrower instruments
+  - NutRadius and HeelRadius minimums reduced to 3 in for smaller instruments
+  - HeelCurveRadius range: 1–12 in → 0.5–20 in
+  - Neck thickness (FretThickness1/12) expanded for deeper bass necks
+  - Fretboard, headstock, body, and overall guitar dimensions expanded
+
 ## [0.3.0] - 2026-03-07
 
 ### Added

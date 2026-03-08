@@ -572,7 +572,7 @@ def _scan_template_dir(directory, is_readonly, is_metric, schema_version):
 
 def _build_template_list():
     """Scan preset and user template dirs and return PUSH_TEMPLATES payload."""
-    schema_version = '0.3.0'
+    schema_version = '0.3.1'
     try:
         schema = parameter_bridge.load_schema()
         if schema:

@@ -13,11 +13,27 @@ export function ChangelogPage() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
 
+          {/* Version 0.3.1 */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <h2 className="text-sm font-semibold font-heading">v0.3.1</h2>
+              <span className="text-xs text-muted-foreground">Current</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">Expanded parameter limits for more instrument types</p>
+            <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc list-inside">
+              <li>FretCount minimum reduced to 4 (supports ukuleles, mandolins, travel guitars)</li>
+              <li>StringCount expanded to 1–18 (ukulele, bass, extended-range, harp guitars)</li>
+              <li>Scale length range expanded: 10–45 in (ukulele through long-scale bass)</li>
+              <li>String gauge maximum doubled to 0.2 in for heavy bass strings</li>
+              <li>Nut, saddle, neck, headstock, and body dimensions expanded throughout</li>
+            </ul>
+          </div>
+
           {/* Version 0.3.0 */}
           <div>
             <div className="flex items-baseline gap-2 mb-2">
               <h2 className="text-sm font-semibold font-heading">v0.3.0</h2>
-              <span className="text-xs text-muted-foreground">Current</span>
+              <span className="text-xs text-muted-foreground">2026-03-07</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2">Options drawer, toggles, and user preferences</p>
             <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc list-inside">

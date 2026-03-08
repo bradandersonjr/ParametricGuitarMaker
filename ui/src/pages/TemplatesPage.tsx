@@ -237,7 +237,7 @@ export function TemplatesPage({ payload, templateList, onTemplateLoaded }: Templ
     sendToPython("SAVE_TEMPLATE", {
       name: saveName.trim(),
       description: saveDesc.trim(),
-      schemaVersion: payload?.schemaVersion ?? "0.3.0",
+      schemaVersion: payload?.schemaVersion ?? "0.3.1",
       parameters,
     })
 
