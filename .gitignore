@@ -31,3 +31,7 @@ docs/
 # User preferences (created and modified per user)
 preferences.json
 radius_cache.json
+
+# Fusion regenerates these for VS Code (absolute interpreter
+# paths, one machine only). Nothing reads them at runtime.
+.env
