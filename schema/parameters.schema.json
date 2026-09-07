@@ -27,10 +27,10 @@
                     "controlType": "number",
                     "default": "24",
                     "min": 4,
-                    "max": 36,
+                    "max": 24,
                     "step": 1,
                     "description": "The total number of frets",
-                    "tooltip": "Ukuleles typically have 12–15 frets; standard guitars 20–24; extended-range instruments up to 36.",
+                    "tooltip": "Standard guitars typically have 20-24 frets.",
                     "category": "count",
                     "precision": 0,
                     "relatedParams": [

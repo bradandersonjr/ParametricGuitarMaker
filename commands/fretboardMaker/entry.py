@@ -22,7 +22,23 @@ app = adsk.core.Application.get()
 ui = app.userInterface
 
 # ── Command identity ────────────────────────────────────────────────
-CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_guitarMaker'
+# Deliberately the add-in's own identifier rather than a minted CMD_ID.
+#
+# Fusion creates an entry for every loaded add-in in the ADD-INS panel, keyed
+# on the add-in's ID. Registering the command under a DIFFERENT ID leaves that
+# entry in place and adds a second button in Create -- which is exactly the
+# duplicate this add-in showed. Registering under the SAME ID claims the
+# control Fusion already made and moves it, so there is one button.
+#
+# GuitarEngine has always done this (ADDIN_ID = 'adskGuitarEnginePythonAddIn'
+# used as both identity and command ID) and has never shown the duplicate,
+# which is what identified the cause. The 'adsk<Name>PythonAddIn' spelling is
+# Autodesk's own convention, and Fusion already uses this exact string for
+# this add-in: its saved parameter values in NMachineSpecificOptions.xml are
+# keyed 'adskFretboardPythonAddIn-<parameter>'.
+#
+# Changing this drops any keyboard shortcut bound to the previous ID.
+CMD_ID = 'adskFretboardPythonAddIn'
 CMD_NAME = 'Parametric Guitar: Fretboard Maker'
 CMD_DESCRIPTION = 'Design custom guitar fretboards with precise parameter control.'
 
@@ -32,6 +48,10 @@ IS_PROMOTED = True
 WORKSPACE_ID = 'FusionSolidEnvironment'
 PANEL_ID = 'SolidCreatePanel'
 COMMAND_BESIDE_ID = ''
+
+# Where Fusion puts its automatic entry for a loaded add-in. Only ever swept
+# for stale controls -- nothing is deliberately placed here.
+ADDINS_PANEL_ID = 'SolidScriptsAddinsPanel'
 
 # ── Icon folder ─────────────────────────────────────────────────────
 ICON_FOLDER = os.path.join(
@@ -153,9 +173,17 @@ def start(is_startup=False):
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
 
-    existing_control = panel.controls.itemById(CMD_ID)
-    if existing_control:
-        existing_control.deleteMe()
+    # Swept across every panel, not just Create. CMD_ID is now the add-in's own
+    # identifier, so a control under it can also exist in the ADD-INS panel --
+    # that is the whole point of the change, and a Create-only sweep would walk
+    # straight past it and leave the duplicate behind.
+    for stale_panel_id in (PANEL_ID, ADDINS_PANEL_ID):
+        stale_panel = ui.allToolbarPanels.itemById(stale_panel_id)
+        if not stale_panel:
+            continue
+        stale_control = stale_panel.controls.itemById(CMD_ID)
+        if stale_control:
+            stale_control.deleteMe()
 
     existing_def = ui.commandDefinitions.itemById(CMD_ID)
     if existing_def:
@@ -200,13 +228,17 @@ def start(is_startup=False):
 
 def stop():
     """Remove the toolbar button and palette when the add-in stops."""
-    workspace = ui.workspaces.itemById(WORKSPACE_ID)
-    panel = workspace.toolbarPanels.itemById(PANEL_ID)
-    command_control = panel.controls.itemById(CMD_ID)
-    command_definition = ui.commandDefinitions.itemById(CMD_ID)
+    # Both panels, matching start(): the control can be in either, and leaving
+    # one behind is what makes a stopped add-in still show a dead button.
+    for panel_id in (PANEL_ID, ADDINS_PANEL_ID):
+        panel = ui.allToolbarPanels.itemById(panel_id)
+        if not panel:
+            continue
+        command_control = panel.controls.itemById(CMD_ID)
+        if command_control:
+            command_control.deleteMe()
 
-    if command_control:
-        command_control.deleteMe()
+    command_definition = ui.commandDefinitions.itemById(CMD_ID)
     if command_definition:
         command_definition.deleteMe()
 
@@ -312,6 +344,7 @@ def _show_palette(payload):
         futil.log(f'{CMD_NAME}: Waiting for JS ready signal...')
     else:
         palette.sendInfoToHTML('PALETTE_RESHOWN', '{}')
+        _push_theme(palette)
         _push_preferences(palette)
         _send_payload(palette, payload)
 
@@ -418,6 +451,72 @@ def palette_incoming(args: adsk.core.HTMLEventArgs):
 # Palette ready / refresh
 # ═══════════════════════════════════════════════════════════════════
 
+def _get_fusion_theme() -> str:
+    """Returns the palette theme name matching Fusion's UI theme.
+
+    Fusion has three themes but the Python API only knows two of them.
+    UserInterfaceThemes defines LightGray=1, DarkBlue=2 and Device=4 -- there
+    is no DarkGray member, because Dark Gray is the hidden 'weave-dark-gray'
+    theme, settable from the text command but absent from the enum. Testing
+    for themes.DarkGrayUserInterfaceTheme raises AttributeError and, if that
+    is swallowed, silently returns Dark Blue for a Dark Gray user. That is
+    exactly the mismatch this function exists to prevent, so the hidden theme
+    is read first, from the same place the add-in that sets it writes to:
+
+        Options.Get WeaveTheme  ->  'weave-dark-gray' | 'weave-dark' | ...
+
+    The enum is the fallback, and handles Device by way of
+    activeUserInterfaceTheme, which resolves it to the theme actually in use.
+    """
+    # The hidden theme, which the enum cannot express.
+    try:
+        raw = app.executeTextCommand('Options.Get WeaveTheme') or ''
+        weave = raw.strip().strip('\'"').lower()
+        if 'gray' in weave or 'grey' in weave:
+            return 'dark-gray'
+        if 'dark' in weave:
+            return 'dark-blue'
+        if 'light' in weave:
+            return 'light'
+    except Exception:
+        # Undocumented and may be renamed; fall through to the supported API.
+        pass
+
+    try:
+        prefs = app.preferences.generalPreferences
+        themes = adsk.core.UserInterfaceThemes
+        # activeUserInterfaceTheme resolves Device to the theme really in use;
+        # it is the newer property, so fall back if it is not present.
+        value = getattr(prefs, 'activeUserInterfaceTheme', None)
+        if value is None:
+            value = prefs.userInterfaceTheme
+    except Exception:
+        return 'dark-blue'
+
+    if value == themes.LightGrayUserInterfaceTheme:
+        return 'light'
+
+    return 'dark-blue'
+
+
+def _push_theme(palette):
+    """Tells the UI which Fusion theme to render.
+
+    Fusion raises no event when the user changes theme, so this is sent on
+    every ready and re-show rather than once: re-opening the palette is what
+    picks up a change made while it was closed.
+    """
+    try:
+        theme = _get_fusion_theme()
+        palette.sendInfoToHTML('PUSH_THEME', json.dumps({'theme': theme}))
+        # Logged because the detection reads an undocumented text command, so
+        # the Text Command window is where a wrong answer becomes visible.
+        futil.log(f'{CMD_NAME}: theme -> {theme}')
+    except Exception:
+        # A palette that cannot be told its theme still renders, in Dark Blue.
+        futil.log(f'{CMD_NAME}: could not push theme')
+
+
 def _on_palette_ready():
     """Called when the JS UI signals it has finished loading."""
     global _pending_payload
@@ -427,6 +526,7 @@ def _on_palette_ready():
         futil.log(f'{CMD_NAME}: _on_palette_ready — no palette found!')
         return
 
+    _push_theme(palette)
     _push_preferences(palette)
 
     design = adsk.fusion.Design.cast(app.activeProduct)

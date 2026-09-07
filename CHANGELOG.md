@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The palette rendered in Courier New with no network.** JetBrains Mono and
+  Space Mono were linked from Google Fonts in `index.html`, and the stacks in
+  `tailwind.config.js` ended at the generic `monospace`. Because `sans` is
+  mapped to JetBrains Mono as well, an offline Fusion fell all the way through
+  to Courier New for the entire UI, body text included -- not just headings.
+
+  Both families are now bundled: `src/fonts.css` declares the faces from
+  `@fontsource`, Vite fingerprints the `.woff2` files into `ui_dist/assets`,
+  and the page loads them from disk. No CDN, no network. The fallbacks are
+  also real faces now (Cascadia Mono, Consolas, SF Mono, Menlo) rather than
+  the bare generic, so a missing family degrades to Consolas instead of
+  Courier.
+
+  Latin `.woff2` only -- six files, ~120KB. Importing `@fontsource`'s own CSS
+  would have pulled the Cyrillic, Greek, Vietnamese and latin-ext subsets plus
+  a legacy `.woff` beside every `.woff2`: 48 files and 616KB, all committed,
+  for a Latin UI in a Chromium 122 webview. Both families are OFL-1.1, which
+  permits redistributing them here.
+
+  This is what `_templates/palette/README.md` means by banning CDNs and web
+  fonts; the rule was right and this palette was the exception to it.
+
+## [0.3.2] - 2026-08-23
+
+### Added
+
+- The palette now follows Fusion's UI theme. All three themes are supported --
+  Light Gray, Dark Blue and the hidden Dark Gray -- with neutrals read from
+  Fusion's own theme files, so a docked palette matches the panels beside it
+  instead of rendering as a white card against dark chrome.
+- `useFusionTheme` hook, and a `PUSH_THEME` message pushed by Python on palette
+  ready and on every re-show. Fusion raises no theme-changed event, so
+  reopening the palette is what picks up a change made while it was closed.
+
+### Fixed
+
+- **Dark Gray rendered as Dark Blue.** `UserInterfaceThemes` defines only
+  `LightGray`, `DarkBlue` and `Device` -- there is no `DarkGray` member,
+  because Dark Gray is the hidden `weave-dark-gray` theme. Reading
+  `themes.DarkGrayUserInterfaceTheme` raised `AttributeError`, which was
+  swallowed and returned Dark Blue. The theme is now read from
+  `Options.Get WeaveTheme` first, with the supported enum as the fallback.
+- The `Device` theme is now resolved through `activeUserInterfaceTheme`, which
+  reports the theme actually in use rather than the preference literal.
+- An opaque grey box below the scrollbar thumb in every theme:
+  `::-webkit-scrollbar-corner` and `::-webkit-scrollbar-button` were unstyled
+  and fell back to the engine's default paint, which ignores the token colors.
+
+### Changed
+
+- Entry file carries the standard module docstring and metadata dunders.
+- The vendored `lib/fusionAddInUtils/` corrections made here (bare `except:` →
+  `except Exception`, unused `import os` dropped, stray `print()` removed) were
+  promoted to the canonical copy at `C:\dev\Design\fusion` and propagated to
+  the other scaffold projects.
+
+### Added
+
+- `LICENSE` (MIT).
+
+### Fixed
+
+- Removed README references to `docs/FINGERPRINT_IMPLEMENTATION.md`, which does
+  not exist.
+
 ## [0.3.1] - 2026-03-08
 
 ### Changed

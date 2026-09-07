@@ -3,75 +3,161 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 25%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 25%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 25%;
-    --primary: 39 21% 50%;
+  /* Fusion has three UI themes and all three are distinct. The neutrals below
+   * are converted from _templates/palette/palette.css, which reads them from
+   * Fusion's own theme files:
+   *
+   *   %LOCALAPPDATA%\Autodesk\webdeploy\production\<build>\*.xbel
+   *
+   * Re-derive after a Fusion update with:
+   *   python _tools/extract_fusion_theme.py
+   *
+   * That is what makes a docked palette match the panels beside it. Do not
+   * replace these with shadcn's stock neutrals -- a #FFFFFF card against
+   * Fusion's #3B4453 chrome is the exact problem this fixes.
+   *
+   * Dark Blue is Fusion's default and the fallback when the theme cannot be
+   * read, so it is the bare :root block. Collapsing Dark Gray into it would
+   * render a blue-tinted panel for a user on the neutral gray theme -- a
+   * visible mismatch, not a rounding error.
+   *
+   * PGFM's own muted gold (39 21% 50%) is deliberately kept; only the
+   * neutrals come from Fusion. */
+  :root,
+  :root[data-theme="dark-blue"] {
+    /* Fusion DarkTheme.xbel -- WidgetContainer1 / MBHeaderViewBackground */
+    --background: 218 16.9% 27.8%;      /* #3B4453 */
+    --foreground: 0 0% 85.1%;           /* #D9D9D9 -- 5.80:1 on surface */
+    --card: 219 16.9% 32.5%;            /* #454F61 */
+    --card-foreground: 0 0% 85.1%;
+    --popover: 219 16.9% 32.5%;
+    --popover-foreground: 0 0% 85.1%;
+    --primary: 39 21% 50%;              /* PGFM gold, unchanged */
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 25%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --secondary: 218 17.0% 36.9%;       /* #4E5A6E -- SearchBoxHoverBackground */
+    --secondary-foreground: 0 0% 85.1%;
+    --muted: 220 16.4% 21.6%;           /* #2E3440 -- inputs sit below the card */
+    --muted-foreground: 0 0% 77.6%;     /* #C6C6C6 -- 4.80:1 on surface */
     --accent: 39 21% 50%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 39 21% 50%;
+    --destructive: 4 100% 84.1%;        /* #FFB3AE -- 4.80:1 on surface */
+    --destructive-foreground: 0 0% 10.2%;
+    --border: 221 18.6% 16.9%;          /* #232833 */
+    --input: 221 18.6% 16.9%;
+    --ring: 40 96.8% 63.3%;             /* #FCBF47 -- the focus ring is brand */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 97%;
-    --sidebar-foreground: 0 0% 25%;
+    --sidebar-background: 220 16.4% 21.6%;
+    --sidebar-foreground: 0 0% 85.1%;
     --sidebar-primary: 39 21% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 93%;
-    --sidebar-accent-foreground: 0 0% 25%;
-    --sidebar-border: 0 0% 89.8%;
-    --sidebar-ring: 39 21% 50%;
+    --sidebar-accent: 218 17.0% 36.9%;
+    --sidebar-accent-foreground: 0 0% 85.1%;
+    --sidebar-border: 221 18.6% 16.9%;
+    --sidebar-ring: 40 96.8% 63.3%;
   }
 
+  /* Fusion DarkGrayTheme.xbel -- the hidden theme, neutral rather than blue.
+   * Only the neutrals differ from Dark Blue; everything else is inherited by
+   * repeating it here so the block stands alone. */
+  :root[data-theme="dark-gray"] {
+    --background: 0 0% 32.5%;           /* #535353 */
+    --foreground: 0 0% 85.1%;
+    --card: 0 0% 27.8%;                 /* #474747 */
+    --card-foreground: 0 0% 85.1%;
+    --popover: 0 0% 27.8%;
+    --popover-foreground: 0 0% 85.1%;
+    --primary: 39 21% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 36.9%;            /* #5E5E5E */
+    --secondary-foreground: 0 0% 85.1%;
+    --muted: 0 0% 12.5%;                /* #202020 -- SearchBoxNormalBackground */
+    --muted-foreground: 0 0% 77.6%;
+    --accent: 39 21% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 100% 84.1%;
+    --destructive-foreground: 0 0% 10.2%;
+    --border: 0 0% 47.1%;               /* #787878 */
+    --input: 0 0% 47.1%;
+    --ring: 40 96.8% 63.3%;
+    --sidebar-background: 0 0% 12.5%;
+    --sidebar-foreground: 0 0% 85.1%;
+    --sidebar-primary: 39 21% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 36.9%;
+    --sidebar-accent-foreground: 0 0% 85.1%;
+    --sidebar-border: 0 0% 47.1%;
+    --sidebar-ring: 40 96.8% 63.3%;
+  }
+
+  /* Fusion LightTheme.xbel. The page is DropDownMenuBackground and the card is
+   * WidgetContainer1 -- the reverse of the darks, because Fusion's light panel
+   * is the lighter of the two surfaces and has no pure #FFF anywhere. */
+  :root[data-theme="light"] {
+    --background: 0 0% 93.7%;           /* #EFEFEF */
+    --foreground: 0 0% 9.8%;            /* #191919 -- 17.43:1 on surface */
+    --card: 0 0% 99.6%;                 /* #FEFEFE */
+    --card-foreground: 0 0% 9.8%;
+    --popover: 0 0% 99.6%;
+    --popover-foreground: 0 0% 9.8%;
+    --primary: 39 21% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96.1%;            /* #F5F5F5 -- ScrollBarBackground */
+    --secondary-foreground: 0 0% 9.8%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 35.3%;     /* #5A5A5A -- 6.84:1 on surface */
+    --accent: 39 21% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 66.4% 46.7%;       /* #C62828 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 76.9%;               /* #C4C4C4 */
+    --input: 0 0% 76.9%;
+    --ring: 40 96.8% 63.3%;
+    --sidebar-background: 0 0% 96.1%;
+    --sidebar-foreground: 0 0% 9.8%;
+    --sidebar-primary: 39 21% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 93.7%;
+    --sidebar-accent-foreground: 0 0% 9.8%;
+    --sidebar-border: 0 0% 76.9%;
+    --sidebar-ring: 40 96.8% 63.3%;
+  }
+
+  /* shadcn's convention, kept as an alias so any `dark:` Tailwind variant
+   * already in the codebase still resolves. Fusion's theme is carried by
+   * data-theme; this only follows it. */
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 0 0% 5.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 12.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 14.9%;
-    --sidebar-ring: 0 0% 83.1%;
+    --background: 218 16.9% 27.8%;
+    --foreground: 0 0% 85.1%;
+    --card: 219 16.9% 32.5%;
+    --card-foreground: 0 0% 85.1%;
+    --popover: 219 16.9% 32.5%;
+    --popover-foreground: 0 0% 85.1%;
+    --primary: 39 21% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 218 17.0% 36.9%;
+    --secondary-foreground: 0 0% 85.1%;
+    --muted: 220 16.4% 21.6%;
+    --muted-foreground: 0 0% 77.6%;
+    --accent: 39 21% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 100% 84.1%;
+    --destructive-foreground: 0 0% 10.2%;
+    --border: 221 18.6% 16.9%;
+    --input: 221 18.6% 16.9%;
+    --ring: 40 96.8% 63.3%;
+    --sidebar-background: 220 16.4% 21.6%;
+    --sidebar-foreground: 0 0% 85.1%;
+    --sidebar-primary: 39 21% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 218 17.0% 36.9%;
+    --sidebar-accent-foreground: 0 0% 85.1%;
+    --sidebar-border: 221 18.6% 16.9%;
+    --sidebar-ring: 40 96.8% 63.3%;
   }
 }
 
@@ -85,29 +171,53 @@
   }
 }
 
-/* Scrollbar styling — use muted colors instead of primary */
+/* Scrollbars -- use muted colors instead of primary.
+ *
+ * There are two scrollbar systems and they are mutually exclusive. The
+ * standard properties (scrollbar-width / scrollbar-color) and the legacy
+ * ::-webkit-scrollbar pseudo-elements are both supported by Chromium, but per
+ * spec the standard ones WIN: once an element has scrollbar-width or
+ * scrollbar-color set, every ::-webkit-scrollbar-* rule for it is ignored.
+ *
+ * This file previously set both, with `scrollbar-width: thin` on `*`. That
+ * silently disabled the whole ::-webkit- block below and left Chromium drawing
+ * its own standard scrollbar -- whose corner is painted from the UA default
+ * and cannot be reached by scrollbar-color, which only takes thumb and track.
+ * That corner was the grey box under the thumb, in all three themes.
+ *
+ * Fusion palettes are Qt WebEngine (Chromium 122 -- see
+ * _tools/check_webengine.py), so the legacy pseudo-elements are the system to
+ * keep: they can style the corner and the stepper buttons, which the standard
+ * properties cannot. Do not reintroduce scrollbar-width or scrollbar-color
+ * here; adding either one turns everything below back off. */
 ::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent !important;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted)) !important;
-  border-radius: 4px !important;
+  background: hsl(var(--muted));
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground)) !important;
+  background: hsl(var(--muted-foreground));
 }
 
-/* Firefox scrollbar */
-html, body, * {
-  scrollbar-color: hsl(var(--muted)) transparent !important;
-  scrollbar-width: thin !important;
+/* Where a vertical and a horizontal bar meet. Left unstyled it is painted in
+ * the UA's opaque grey, which ignores the tokens above. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* The stepper arrows. A transparent background alone still reserves their
+ * box, so they are removed outright. */
+::-webkit-scrollbar-button {
+  display: none;
 }
 
 @layer utilities {

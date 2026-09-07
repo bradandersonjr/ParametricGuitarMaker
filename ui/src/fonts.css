@@ -1,0 +1,72 @@
+/* JetBrains Mono and Space Mono, bundled rather than fetched.
+ *
+ * These were previously linked from Google Fonts in index.html. That works
+ * online and fails badly offline: the stacks in tailwind.config.js end at the
+ * generic `monospace`, and `sans` is mapped to JetBrains Mono too, so a Fusion
+ * with no network rendered the whole UI -- body text included -- in Courier
+ * New. Fusion runs offline routinely, and _templates/palette/README.md bans
+ * CDNs and web fonts for that reason.
+ *
+ * These @font-face rules point at the .woff2 files in @fontsource. Vite
+ * fingerprints them into ui_dist/assets and rewrites these URLs, so the page
+ * loads its type from disk.
+ *
+ * Written by hand rather than importing @fontsource's own CSS, which pulls the
+ * Cyrillic, Greek, Vietnamese and latin-ext subsets plus a legacy .woff beside
+ * every .woff2 -- 48 files and 616KB, all committed, for a palette that shows
+ * Latin text in a Chromium 122 webview that has supported woff2 for a decade.
+ * Latin woff2 only is 6 files.
+ *
+ * Both families are OFL-1.1, which permits this redistribution.
+ *
+ * font-display: block, not swap. The palette is small and opens instantly;
+ * a flash of Courier before the real face lands is worse here than the few
+ * milliseconds it takes to load a local file. */
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url("@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url("@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("@fontsource/space-mono/files/space-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("@fontsource/space-mono/files/space-mono-latin-700-normal.woff2") format("woff2");
+}

@@ -13,11 +13,26 @@ export function ChangelogPage() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
 
+          {/* Version 0.3.2 */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <h2 className="text-sm font-semibold font-heading">v0.3.2</h2>
+              <span className="text-xs text-muted-foreground">Current</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">Follows Fusion's UI theme</p>
+            <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc list-inside">
+              <li>The palette now matches Fusion's theme: Light Gray, Dark Blue, and the hidden Dark Gray</li>
+              <li>Colors are read from Fusion's own theme files, so a docked palette matches the panels beside it</li>
+              <li>Fixed: Dark Gray rendered as Dark Blue</li>
+              <li>Fixed: a grey box below the scrollbar thumb in every theme</li>
+            </ul>
+          </div>
+
           {/* Version 0.3.1 */}
           <div>
             <div className="flex items-baseline gap-2 mb-2">
               <h2 className="text-sm font-semibold font-heading">v0.3.1</h2>
-              <span className="text-xs text-muted-foreground">Current</span>
+              <span className="text-xs text-muted-foreground">2026-03-08</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2">Expanded parameter limits for more instrument types</p>
             <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc list-inside">

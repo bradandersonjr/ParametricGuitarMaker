@@ -7,10 +7,17 @@ export default {
   ],
   theme: {
   	extend: {
+  		// The faces are bundled by src/fonts.css rather than fetched from
+  		// Google, so the palette keeps its type offline.
+  		//
+  		// The fallbacks are real faces rather than the bare `monospace` these
+  		// stacks used to end on. Since `sans` is JetBrains Mono too, that
+  		// generic resolved to Courier New on Windows and took the entire UI
+  		// with it whenever the font was unavailable.
   		fontFamily: {
-  			sans: ['"JetBrains Mono"', 'monospace'],
-  			mono: ['"JetBrains Mono"', 'monospace'],
-  			heading: ['"Space Mono"', 'monospace'],
+  			sans: ['"JetBrains Mono"', '"Cascadia Mono"', 'Consolas', '"SF Mono"', 'Menlo', 'monospace'],
+  			mono: ['"JetBrains Mono"', '"Cascadia Mono"', 'Consolas', '"SF Mono"', 'Menlo', 'monospace'],
+  			heading: ['"Space Mono"', '"JetBrains Mono"', '"Cascadia Mono"', 'Consolas', 'monospace'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

@@ -62,7 +62,6 @@ ParametricGuitarFretboardMaker/
 ├── docs/
 │   ├── DEV_NOTES.md                     # Architecture & development workflow
 │   ├── QUICKSTART.md                    # Quick reference
-│   └── FINGERPRINT_IMPLEMENTATION.md    # Smart detection system
 └── README.md
 ```
 
@@ -121,7 +120,6 @@ The production build is bundled into `ui_dist/` for offline use in Fusion.
 
 - **[QUICKSTART.md](docs/QUICKSTART.md)** — Quick reference for users and developers
 - **[DEV_NOTES.md](docs/DEV_NOTES.md)** — Architecture, constraints, and development patterns
-- **[FINGERPRINT_IMPLEMENTATION.md](docs/FINGERPRINT_IMPLEMENTATION.md)** — Smart app detection system
 
 ## License
 

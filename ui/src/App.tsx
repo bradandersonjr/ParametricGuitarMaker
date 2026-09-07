@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { useModelPayload } from "@/hooks/useModelPayload"
 import { onPythonMessage } from "@/lib/fusion-bridge"
 import { useVersionCheck } from "@/hooks/useVersionCheck"
+import { useFusionTheme } from "@/hooks/useFusionTheme"
 import { ParametersPage } from "@/pages/ParametersPage"
 import { ReportsPage } from "@/pages/ReportsPage"
 import { ChangelogPage } from "@/pages/ChangelogPage"
@@ -30,6 +31,10 @@ function App() {
   const [dismissedThisSession, setDismissedThisSession] = useState(false)
   const { payload, connected, templateList } = useModelPayload()
   const versionInfo = useVersionCheck(APP_VERSION)
+
+  // Follow Fusion's UI theme. Python pushes it on ready and on every
+  // re-show, since Fusion raises no theme-changed event.
+  useFusionTheme()
 
   // Sync dismissal state from sessionStorage (session-only behavior).
   useEffect(() => {
